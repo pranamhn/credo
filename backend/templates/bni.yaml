@@ -1,0 +1,34 @@
+bank_code: BNI
+bank_name: Bank Negara Indonesia
+version: 1
+
+detection:
+  header_keywords:
+    - PT BANK NEGARA INDONESIA
+    - BANK BNI
+    - BNI MOBILE BANKING
+    - INTERNET BANKING BNI
+  account_no_pattern: "\\b\\d{10}\\b"
+
+parsing:
+  date_format: "%d/%m/%Y"
+  decimal_separator: ","
+  thousand_separator: "."
+  table_columns:
+    date: 0
+    description: 1
+    debit: 2
+    credit: 3
+    balance: 4
+  mutation_format: separate_debit_credit
+
+header_patterns:
+  period: "(?:PERIODE|PERIOD)\\s*:?\\s*(\\d{2}/\\d{2}/\\d{4})\\s*[-–s/d]+\\s*(\\d{2}/\\d{2}/\\d{4})"
+  opening_balance: "SALDO\\s+AWAL\\s*:?\\s*([\\d.,]+)"
+  closing_balance: "SALDO\\s+AKHIR\\s*:?\\s*([\\d.,]+)"
+  account_no: "(?:NO\\.?\\s*REKENING|NOMOR\\s+REKENING)\\s*:?\\s*(\\d[\\d\\s-]+\\d)"
+  account_holder: "(?:NAMA|PEMILIK\\s+REKENING)\\s*:?\\s*(.+)"
+
+notes: >
+  BNI uses "TRANSAKSI" column header instead of "KETERANGAN".
+  Account number: 10 digits.

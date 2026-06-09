@@ -1,0 +1,36 @@
+bank_code: BCA
+bank_name: Bank Central Asia
+version: 1
+
+detection:
+  header_keywords:
+    - PT BANK CENTRAL ASIA
+    - BANK BCA
+    - KLIKBCA
+    - BCA MOBILE
+    - MYCA
+  account_no_pattern: "\\b\\d{10}\\b"
+
+parsing:
+  date_format: "%d/%m/%Y"
+  decimal_separator: ","
+  thousand_separator: "."
+  table_columns:
+    date: 0
+    description: 1
+    branch: 2
+    mutation: 3      # CR/DB suffix format
+    balance: 4
+  mutation_format: combined_cr_db   # '1.500.000,00 CR' or '500.000,00 DB'
+
+header_patterns:
+  period: "PERIODE\\s*:?\\s*(\\d{2}/\\d{2}/\\d{4})\\s*[-–]\\s*(\\d{2}/\\d{2}/\\d{4})"
+  opening_balance: "SALDO\\s+AWAL\\s*:?\\s*([\\d.,]+)"
+  closing_balance: "SALDO\\s+AKHIR\\s*:?\\s*([\\d.,]+)"
+  account_no: "NO\\.?\\s*REKENING\\s*:?\\s*(\\d[\\d\\s-]+\\d)"
+  account_holder: "NAMA\\s*:?\\s*(.+)"
+
+notes: >
+  BCA KlikBCA statement uses combined mutation column with CR/DB suffix.
+  Export Excel via KlikBCA produces cleaner data — prioritize if available.
+  Period format: 01/01/2026 - 31/01/2026

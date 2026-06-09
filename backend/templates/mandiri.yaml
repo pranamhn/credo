@@ -1,0 +1,35 @@
+bank_code: MDR
+bank_name: Bank Mandiri
+version: 1
+
+detection:
+  header_keywords:
+    - PT BANK MANDIRI
+    - BANK MANDIRI
+    - LIVIN BY MANDIRI
+    - MANDIRI ONLINE
+    - KOPRA
+  account_no_pattern: "\\b\\d{13}\\b"
+
+parsing:
+  date_format: "%d/%m/%Y"
+  decimal_separator: ","
+  thousand_separator: "."
+  table_columns:
+    date: 0
+    description: 1
+    debit: 2
+    credit: 3
+    balance: 4
+  mutation_format: separate_debit_credit
+
+header_patterns:
+  period: "(?:PERIODE|PERIOD)\\s*:?\\s*(\\d{2}/\\d{2}/\\d{4})\\s*[-–s/d]+\\s*(\\d{2}/\\d{2}/\\d{4})"
+  opening_balance: "SALDO\\s+(?:AWAL|PEMBUKAAN)\\s*:?\\s*([\\d.,]+)"
+  closing_balance: "SALDO\\s+(?:AKHIR|PENUTUPAN)\\s*:?\\s*([\\d.,]+)"
+  account_no: "NOMOR\\s+REKENING\\s*:?\\s*(\\d[\\d\\s-]+\\d)"
+  account_holder: "NAMA\\s+(?:NASABAH|PEMILIK)\\s*:?\\s*(.+)"
+
+notes: >
+  Mandiri Livin' and Kopra use separate debit/credit columns.
+  Account number format: 13 digits. Period separator varies: s/d or –.

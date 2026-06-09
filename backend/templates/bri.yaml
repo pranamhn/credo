@@ -1,0 +1,34 @@
+bank_code: BRI
+bank_name: Bank Rakyat Indonesia
+version: 1
+
+detection:
+  header_keywords:
+    - PT BANK RAKYAT INDONESIA
+    - BANK BRI
+    - BRIMO
+    - INTERNET BANKING BRI
+  account_no_pattern: "\\b\\d{15}\\b"
+
+parsing:
+  date_format: "%d/%m/%Y"
+  decimal_separator: ","
+  thousand_separator: "."
+  table_columns:
+    date: 0
+    description: 1
+    debit: 2      # BRI uses "DEBET" spelling
+    credit: 3
+    balance: 4
+  mutation_format: separate_debit_credit
+
+header_patterns:
+  period: "(?:PERIODE|TANGGAL\\s+CETAK)\\s*:?\\s*(\\d{2}/\\d{2}/\\d{4})\\s*[-–]\\s*(\\d{2}/\\d{2}/\\d{4})"
+  opening_balance: "SALDO\\s+AWAL\\s*:?\\s*([\\d.,]+)"
+  closing_balance: "SALDO\\s+AKHIR\\s*:?\\s*([\\d.,]+)"
+  account_no: "NO\\.?\\s*(?:REKENING|REK)\\s*:?\\s*(\\d[\\d\\s-]+\\d)"
+  account_holder: "(?:NAMA|PEMILIK)\\s*:?\\s*(.+)"
+
+notes: >
+  BRI uses "DEBET" (not "DEBIT") in table headers — match both.
+  Account number: 15 digits. Largest rural banking network in Indonesia.
