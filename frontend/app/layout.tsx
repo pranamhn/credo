@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full bg-background text-foreground">
+      <body className="min-h-full bg-background text-foreground" style={{ backgroundColor: "#EEF2F7" }}>
         <Suspense><PageProgress /></Suspense>
         {children}
         <Toaster richColors position="top-right" />
