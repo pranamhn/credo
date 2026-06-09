@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart3, Building2, CloudUpload, Command, FileText,
-  Search, Settings, ArrowRight,
+  Search, Settings, ArrowRight, AlertTriangle,
 } from "lucide-react";
 
 interface CommandItem {
@@ -16,11 +16,15 @@ interface CommandItem {
 }
 
 const COMMANDS: CommandItem[] = [
-  { id: "companies",  label: "Companies",  description: "Portofolio perusahaan & dokumen", icon: <Building2  className="h-4 w-4" />, href: "/companies" },
-  { id: "statements", label: "Statements", description: "Library rekening koran",           icon: <FileText   className="h-4 w-4" />, href: "/statements" },
-  { id: "upload",     label: "Upload",     description: "Upload dokumen baru",              icon: <CloudUpload className="h-4 w-4" />, href: "/upload",     shortcut: "U" },
-  { id: "analytics",  label: "Analytics",  description: "Tren risiko portofolio",           icon: <BarChart3  className="h-4 w-4" />, href: "/analytics" },
-  { id: "admin",      label: "Admin",      description: "Parser & operations console",      icon: <Settings   className="h-4 w-4" />, href: "/admin" },
+  { id: "home", label: "Home", description: "Dashboard briefing harian", icon: <Command className="h-4 w-4" />, href: "/", shortcut: "H" },
+  { id: "companies", label: "Companies", description: "Portofolio perusahaan & dokumen", icon: <Building2 className="h-4 w-4" />, href: "/companies" },
+  { id: "statements", label: "Statements", description: "Library rekening koran", icon: <FileText className="h-4 w-4" />, href: "/statements" },
+  { id: "upload", label: "Upload", description: "Upload dokumen baru", icon: <CloudUpload className="h-4 w-4" />, href: "/upload", shortcut: "U" },
+  { id: "loans", label: "Loans", description: "Fasilitas kredit & kolektibilitas", icon: <FileText className="h-4 w-4" />, href: "/loans" },
+  { id: "watchlist", label: "Watch List", description: "Early warning signal monitoring", icon: <AlertTriangle className="h-4 w-4" />, href: "/watchlist" },
+  { id: "idebt", label: "iDeb Parser", description: "SLIK & CBI report parsing", icon: <Search className="h-4 w-4" />, href: "/idebt-parser" },
+  { id: "analytics", label: "Analytics", description: "Tren risiko portofolio", icon: <BarChart3 className="h-4 w-4" />, href: "/analytics" },
+  { id: "admin", label: "Admin", description: "Parser & operations console", icon: <Settings className="h-4 w-4" />, href: "/admin" },
 ];
 
 interface CommandPaletteProps {
@@ -29,16 +33,16 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
-  const router   = useRouter();
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [query,     setQuery]     = useState("");
+  const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
 
   const filtered = query.trim()
     ? COMMANDS.filter((c) =>
-        c.label.toLowerCase().includes(query.toLowerCase()) ||
-        c.description.toLowerCase().includes(query.toLowerCase())
-      )
+      c.label.toLowerCase().includes(query.toLowerCase()) ||
+      c.description.toLowerCase().includes(query.toLowerCase())
+    )
     : COMMANDS;
 
   useEffect(() => {
@@ -111,16 +115,14 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 key={item.id}
                 onClick={() => navigate(item)}
                 onMouseEnter={() => setActiveIdx(idx)}
-                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                  idx === activeIdx ? "bg-teal-50" : "hover:bg-slate-50"
-                }`}
+                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${idx === activeIdx ? "bg-teal-50" : "hover:bg-slate-50"
+                  }`}
               >
                 <div
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                    idx === activeIdx
-                      ? "bg-teal-600 text-white"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${idx === activeIdx
+                    ? "bg-teal-600 text-white"
+                    : "bg-slate-100 text-slate-500"
+                    }`}
                 >
                   {item.icon}
                 </div>

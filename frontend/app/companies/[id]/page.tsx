@@ -14,6 +14,7 @@ import {
   ArrowLeft, Building2, FileText, TrendingUp, TrendingDown,
   Scale, FileSpreadsheet, BarChart3, BookOpen, AlertTriangle,
   FolderOpen, Trash2, Printer, PencilLine, ShieldCheck, CalendarDays, List, RefreshCw, Save, Wallet, X, Upload, Eye,
+  ScrollText, FileCheck,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
@@ -37,6 +38,9 @@ const docTypeInfo: Record<DocumentType, { label: string; icon: React.ComponentTy
   cash_flow:      { label: "Cash Flow",       icon: Scale,           active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",    idle: "bg-amber-50 text-amber-600" },
   balance_sheet:  { label: "Balance Sheet",   icon: FileSpreadsheet, active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",    idle: "bg-indigo-50 text-indigo-600" },
   other:          { label: "Dokumen Lain",    icon: BookOpen,        active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",    idle: "bg-slate-100 text-slate-500" },
+  nib:            { label: "Dokumen NIB",     icon: ScrollText,      active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",    idle: "bg-sky-50 text-sky-600" },
+  ahu:            { label: "Dokumen AHU",     icon: Building2,       active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",    idle: "bg-violet-50 text-violet-600" },
+  akta:           { label: "Akta",            icon: FileCheck,       active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",    idle: "bg-rose-50 text-rose-600" },
 };
 
 const docBadge: Record<DocumentType, string> = {
@@ -45,6 +49,9 @@ const docBadge: Record<DocumentType, string> = {
   cash_flow:      "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
   balance_sheet:  "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200",
   other:          "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
+  nib:            "bg-sky-50 text-sky-700 ring-1 ring-sky-200",
+  ahu:            "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
+  akta:           "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
 };
 
 interface PnlLineItem {

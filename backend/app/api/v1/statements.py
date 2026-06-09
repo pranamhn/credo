@@ -305,7 +305,7 @@ async def upload_statement(
     if company_id and not await db.get(Company, company_id):
         raise HTTPException(404, "Company not found")
 
-    allowed_document_types = {"bank_statement", "profit_loss", "cash_flow", "balance_sheet", "other"}
+    allowed_document_types = {"bank_statement", "profit_loss", "cash_flow", "balance_sheet", "other", "nib", "ahu", "akta"}
     if document_type not in allowed_document_types:
         raise HTTPException(400, f"Tipe dokumen tidak didukung: {document_type}")
 

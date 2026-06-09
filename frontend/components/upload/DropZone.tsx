@@ -24,27 +24,27 @@ interface FileEntry {
 }
 
 const statusIcon: Record<FileEntry["status"], React.ReactNode> = {
-  pending:  <Clock className="w-4 h-4 text-slate-400" />,
-  uploading:<Loader2 className="w-4 h-4 text-teal-500 animate-spin" />,
-  parsing:  <FileSearch className="w-4 h-4 text-indigo-500 animate-pulse" />,
-  done:     <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
-  error:    <AlertCircle className="w-4 h-4 text-red-500" />,
+  pending: <Clock className="w-4 h-4 text-slate-400" />,
+  uploading: <Loader2 className="w-4 h-4 text-teal-500 animate-spin" />,
+  parsing: <FileSearch className="w-4 h-4 text-indigo-500 animate-pulse" />,
+  done: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+  error: <AlertCircle className="w-4 h-4 text-red-500" />,
 };
 
 const stmtStatusCls: Record<StatementStatus, string> = {
-  queued:       "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
-  parsing:      "bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200",
-  done:         "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  queued: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
+  parsing: "bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200",
+  done: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
   needs_review: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
-  failed:       "bg-red-50 text-red-600 ring-1 ring-red-200",
+  failed: "bg-red-50 text-red-600 ring-1 ring-red-200",
 };
 
 const barColor: Record<FileEntry["status"], string> = {
-  pending:  "bg-slate-300",
-  uploading:"bg-teal-500",
-  parsing:  "bg-indigo-500",
-  done:     "bg-emerald-500",
-  error:    "bg-red-500",
+  pending: "bg-slate-300",
+  uploading: "bg-teal-500",
+  parsing: "bg-indigo-500",
+  done: "bg-emerald-500",
+  error: "bg-red-500",
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -93,10 +93,12 @@ export function DropZone({
   companyId,
   documentType = "bank_statement",
   onComplete,
+  onStatementReady,
 }: {
   companyId?: string;
   documentType?: DocumentType;
   onComplete?: () => void;
+  onStatementReady?: (statement: Statement) => void;
 }) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
 
@@ -131,6 +133,7 @@ export function DropZone({
             });
             toast.success(`${entry.file.name} selesai (${finalRows} row)`);
             onComplete?.();
+            onStatementReady?.(latest);
             return;
           }
           if (latest.status === "failed") {
@@ -161,7 +164,7 @@ export function DropZone({
         }
       }
     },
-    [updateEntry, onComplete]
+    [updateEntry, onComplete, onStatementReady]
   );
 
   const uploadFile = useCallback(
@@ -201,6 +204,7 @@ export function DropZone({
           });
           toast.success(`${entry.file.name} disimpan`);
           onComplete?.();
+          onStatementReady?.(data);
           return;
         }
         const parsingStartedAt = Date.now();
@@ -225,7 +229,7 @@ export function DropZone({
         toast.error(msg);
       }
     },
-    [pollParsing, updateEntry, companyId, documentType, onComplete]
+    [pollParsing, updateEntry, companyId, documentType, onComplete, onStatementReady]
   );
 
   const onDrop = useCallback(

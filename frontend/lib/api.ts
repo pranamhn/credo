@@ -15,7 +15,7 @@ if (process.env.NEXT_PUBLIC_API_URL) {
 }
 
 export type StatementStatus = "queued" | "parsing" | "done" | "needs_review" | "failed";
-export type DocumentType = "bank_statement" | "profit_loss" | "cash_flow" | "balance_sheet" | "other";
+export type DocumentType = "bank_statement" | "profit_loss" | "cash_flow" | "balance_sheet" | "other" | "nib" | "ahu" | "akta";
 
 export interface Statement {
   id: string;

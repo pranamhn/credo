@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "@/components/ui-kit/CommandPalette";
+import { KeyboardHelp } from "./KeyboardHelp";
 import {
   ChevronDown, ChevronRight, CircleHelp,
   List, Menu, Search, Shield, X, Bell,
@@ -11,15 +12,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const ROUTE_LABELS: Record<string, string> = {
-  companies:  "Companies",
+  companies: "Companies",
   statements: "Documents",
-  upload:     "Upload",
-  analytics:  "Analytics",
-  admin:      "Settings",
+  upload: "Upload",
+  analytics: "Analytics",
+  admin: "Settings",
   "idebt-parser": "iDeb Parser",
-  loans:      "Fasilitas Kredit",
-  watchlist:  "Watch List",
-  memo:       "Memo Kredit",
+  loans: "Fasilitas Kredit",
+  watchlist: "Watch List",
+  memo: "Memo Kredit",
 };
 
 interface Notif {
@@ -34,26 +35,39 @@ interface Notif {
 }
 
 const MOCK_NOTIFS: Notif[] = [
-  { id: "1", title: "Statement gagal diparse",    body: "BCA — rekening_jan.pdf tidak dapat dibaca. Coba re-parse.",          time: "5 menit lalu",  unread: true,  icon: AlertTriangle, iconBg: "bg-red-50",     iconText: "text-red-500" },
-  { id: "2", title: "Parsing selesai",             body: "Mandiri — statement_feb.pdf berhasil diparse (243 transaksi).",       time: "18 menit lalu", unread: true,  icon: CheckCircle2,  iconBg: "bg-emerald-50", iconText: "text-emerald-500" },
-  { id: "3", title: "Statement perlu review",      body: "BNI — saldo akhir tidak sesuai. Delta Rp 450.000.",                   time: "1 jam lalu",    unread: false, icon: AlertTriangle, iconBg: "bg-amber-50",   iconText: "text-amber-500" },
-  { id: "4", title: "Perusahaan baru ditambahkan", body: "PT Maju Bersama berhasil dibuat dan siap menerima dokumen.",          time: "2 jam lalu",    unread: false, icon: Building2,     iconBg: "bg-blue-50",    iconText: "text-blue-500" },
-  { id: "5", title: "5 statement diupload",        body: "Batch upload selesai — 4 berhasil, 1 gagal.",                         time: "3 jam lalu",    unread: false, icon: FileText,      iconBg: "bg-indigo-50",  iconText: "text-indigo-500" },
+  { id: "1", title: "Statement gagal diparse", body: "BCA — rekening_jan.pdf tidak dapat dibaca. Coba re-parse.", time: "5 menit lalu", unread: true, icon: AlertTriangle, iconBg: "bg-red-50", iconText: "text-red-500" },
+  { id: "2", title: "Parsing selesai", body: "Mandiri — statement_feb.pdf berhasil diparse (243 transaksi).", time: "18 menit lalu", unread: true, icon: CheckCircle2, iconBg: "bg-emerald-50", iconText: "text-emerald-500" },
+  { id: "3", title: "Statement perlu review", body: "BNI — saldo akhir tidak sesuai. Delta Rp 450.000.", time: "1 jam lalu", unread: false, icon: AlertTriangle, iconBg: "bg-amber-50", iconText: "text-amber-500" },
+  { id: "4", title: "Perusahaan baru ditambahkan", body: "PT Maju Bersama berhasil dibuat dan siap menerima dokumen.", time: "2 jam lalu", unread: false, icon: Building2, iconBg: "bg-blue-50", iconText: "text-blue-500" },
+  { id: "5", title: "5 statement diupload", body: "Batch upload selesai — 4 berhasil, 1 gagal.", time: "3 jam lalu", unread: false, icon: FileText, iconBg: "bg-indigo-50", iconText: "text-indigo-500" },
 ];
 
-function useBreadcrumbs(path: string): string[] {
-  return path.split("/").filter(Boolean).map((seg) => ROUTE_LABELS[seg] ?? seg);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function useBreadcrumbs(path: string): { label: string; href: string }[] {
+  const segments = path.split("/").filter(Boolean);
+  const result: { label: string; href: string }[] = [];
+  let cumulativePath = "";
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    cumulativePath += "/" + seg;
+    if (UUID_RE.test(seg)) continue; // skip UUIDs
+    const label = ROUTE_LABELS[seg] ?? seg;
+    result.push({ label, href: cumulativePath });
+  }
+  return result;
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const path        = usePathname();
-  const router      = useRouter();
+  const path = usePathname();
+  const router = useRouter();
   const breadcrumbs = useBreadcrumbs(path);
 
-  const [mobileOpen,   setMobileOpen]   = useState(false);
-  const [sidebarOpen,  setSidebarOpen]  = useState(true);
-  const [paletteOpen,  setPaletteOpen]  = useState(false);
-  const [notifOpen,    setNotifOpen]    = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -68,7 +82,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if ((e.key === "u" || e.key === "U") && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
         router.push("/upload"); return;
       }
-      if (e.key === "Escape") setMobileOpen(false);
+      // R7 — Keyboard shortcut help
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault(); setHelpOpen(true); return;
+      }
+      if (e.key === "Escape") { setMobileOpen(false); setHelpOpen(false); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -77,6 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       {/* ── Header (full width, on top) ── */}
       <header className="sticky top-0 z-20 h-14 w-full border-b border-gray-200 bg-white shadow-sm">
@@ -113,12 +132,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 </li>
                 {breadcrumbs.map((crumb, i) => (
-                  <li key={crumb + i} className="flex items-center gap-1.5 min-w-0">
+                  <li key={crumb.href} className="flex items-center gap-1.5 min-w-0">
                     <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" aria-hidden="true" />
                     {i === breadcrumbs.length - 1 ? (
-                      <span className="text-gray-900 font-medium truncate" aria-current="page">{crumb}</span>
+                      <span className="text-gray-900 font-medium truncate" aria-current="page">{crumb.label}</span>
                     ) : (
-                      <span className="text-gray-500 truncate">{crumb}</span>
+                      <Link href={crumb.href} className="text-gray-500 hover:text-gray-700 transition-colors truncate">
+                        {crumb.label}
+                      </Link>
                     )}
                   </li>
                 ))}
@@ -235,7 +256,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <X className="h-4 w-4" />
             </button>
-            <Sidebar />
+            <Sidebar onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
 

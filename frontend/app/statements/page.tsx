@@ -10,7 +10,7 @@ import { formatIDR, formatDate } from "@/lib/utils";
 import {
   AlertTriangle, CalendarRange, CheckCircle2, ExternalLink,
   Download, FileStack, FileText, Funnel, MoreHorizontal, Plus, RefreshCw,
-  Search, ShieldCheck, X,
+  Search, ShieldCheck, Trash2, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,10 +18,10 @@ const PAGE_SIZE = 10;
 
 type SummaryTone = "slate" | "amber" | "emerald" | "rose";
 const summaryTone: Record<SummaryTone, { box: string; icon: string; value: string }> = {
-  slate:   { box: "bg-slate-100 text-slate-600",       icon: "text-slate-700",   value: "text-slate-900" },
-  amber:   { box: "bg-amber-100 text-amber-700",       icon: "text-amber-700",   value: "text-amber-800" },
-  emerald: { box: "bg-emerald-100 text-emerald-700",   icon: "text-emerald-700", value: "text-emerald-800" },
-  rose:    { box: "bg-red-100 text-red-600",           icon: "text-red-700",     value: "text-red-700" },
+  slate: { box: "bg-slate-100 text-slate-600", icon: "text-slate-700", value: "text-slate-900" },
+  amber: { box: "bg-amber-100 text-amber-700", icon: "text-amber-700", value: "text-amber-800" },
+  emerald: { box: "bg-emerald-100 text-emerald-700", icon: "text-emerald-700", value: "text-emerald-800" },
+  rose: { box: "bg-red-100 text-red-600", icon: "text-red-700", value: "text-red-700" },
 };
 
 function SummaryCard({
@@ -65,30 +65,30 @@ function pct(value: number | null | undefined) {
 
 type StatusFilter = "Semua" | "done" | "needs_review" | "failed" | "queued" | "parsing";
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
-  { key: "Semua",        label: "Semua" },
-  { key: "done",         label: "Done" },
+  { key: "Semua", label: "Semua" },
+  { key: "done", label: "Done" },
   { key: "needs_review", label: "Needs Review" },
-  { key: "failed",       label: "Failed" },
-  { key: "queued",       label: "Queued" },
-  { key: "parsing",      label: "Parsing" },
+  { key: "failed", label: "Failed" },
+  { key: "queued", label: "Queued" },
+  { key: "parsing", label: "Parsing" },
 ];
 
 export default function StatementsPage() {
   const [statements, setStatements] = useState<Statement[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [dateFrom, setDateFrom]       = useState("");
-  const [dateTo, setDateTo]           = useState("");
-  const [search, setSearch]           = useState("");
+  const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Semua");
-  const [bankFilter, setBankFilter]   = useState("Semua");
-  const [selected, setSelected]       = useState<Set<string>>(new Set());
+  const [bankFilter, setBankFilter] = useState("Semua");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reconciling, setReconciling] = useState(false);
-  const [refreshing, setRefreshing]   = useState(false);
-  const [reparsing, setReparsing]     = useState<Set<string>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
+  const [reparsing, setReparsing] = useState<Set<string>>(new Set());
   const [reparseProgress, setReparseProgress] = useState<Record<string, number>>({});
   const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [openToolbarPanel, setOpenToolbarPanel] = useState<"filter" | "date" | null>(null);
-  const [page, setPage]               = useState(1);
+  const [page, setPage] = useState(1);
 
   const updateStatement = useCallback((next: Statement) => {
     setStatements((prev) => prev.map((item) => (item.id === next.id ? { ...item, ...next } : item)));
@@ -126,9 +126,9 @@ export default function StatementsPage() {
       ].some((value) => String(value ?? "").toLowerCase().includes(query)));
     }
     if (statusFilter !== "Semua") list = list.filter((s) => s.status === statusFilter);
-    if (bankFilter   !== "Semua") list = list.filter((s) => (s.bank_name || s.bank_code) === bankFilter);
-    if (dateFrom) list = list.filter((s) => (s.period_end   ?? "") >= dateFrom);
-    if (dateTo)   list = list.filter((s) => (s.period_start ?? "") <= dateTo);
+    if (bankFilter !== "Semua") list = list.filter((s) => (s.bank_name || s.bank_code) === bankFilter);
+    if (dateFrom) list = list.filter((s) => (s.period_end ?? "") >= dateFrom);
+    if (dateTo) list = list.filter((s) => (s.period_start ?? "") <= dateTo);
     return list;
   }, [statements, search, statusFilter, bankFilter, dateFrom, dateTo]);
 
@@ -141,7 +141,7 @@ export default function StatementsPage() {
   }, [statements]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const totalPagesParsed = statements.reduce((sum, s) => {
     if (s.status !== "done" && s.status !== "needs_review") return sum;
@@ -163,7 +163,7 @@ export default function StatementsPage() {
     setBankFilter("Semua");
     setPage(1);
   };
-  const hasFilters   = search || dateFrom || dateTo || bankFilter !== "Semua";
+  const hasFilters = search || dateFrom || dateTo || bankFilter !== "Semua";
 
   const allPageSelected = paginated.length > 0 && paginated.every((s) => selected.has(s.id));
   const toggleAll = () => {
@@ -187,6 +187,22 @@ export default function StatementsPage() {
       load();
     } catch { toast.error("Gagal merekonsiliasi beberapa statement"); }
     finally { setReconciling(false); }
+  };
+
+  // S5 — Batch delete
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      await Promise.all([...selected].map((id) => statementsApi.delete(id)));
+      toast.success(`${selected.size} statement dihapus`);
+      setSelected(new Set());
+      setConfirmBulkDelete(false);
+      load();
+    } catch { toast.error("Gagal menghapus beberapa statement"); }
+    finally { setBulkDeleting(false); }
   };
 
   const exportStatements = () => {
@@ -284,10 +300,10 @@ export default function StatementsPage() {
         {/* Stats */}
         {!loading && statements.length > 0 && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard icon={<FileText className="h-[22px] w-[22px]" />}      value={statements.length} label="Total Upload"        tone="slate" />
-            <SummaryCard icon={<FileStack className="h-[22px] w-[22px]" />}     value={totalPagesParsed}  label="Total Page Pharsed" tone="amber" />
-            <SummaryCard icon={<AlertTriangle className="h-[22px] w-[22px]" />} value={totalAnomalies}    label="Total Flag Anomali" tone="rose" />
-            <SummaryCard icon={<ShieldCheck className="h-[22px] w-[22px]" />}   value={averageConfidence} label="Average Confident"  tone="emerald" />
+            <SummaryCard icon={<FileText className="h-[22px] w-[22px]" />} value={statements.length} label="Total Upload" tone="slate" />
+            <SummaryCard icon={<FileStack className="h-[22px] w-[22px]" />} value={totalPagesParsed} label="Total Page Pharsed" tone="amber" />
+            <SummaryCard icon={<AlertTriangle className="h-[22px] w-[22px]" />} value={totalAnomalies} label="Total Flag Anomali" tone="rose" />
+            <SummaryCard icon={<ShieldCheck className="h-[22px] w-[22px]" />} value={averageConfidence} label="Average Confident" tone="emerald" />
           </div>
         )}
 
@@ -333,11 +349,10 @@ export default function StatementsPage() {
                         <button
                           type="button"
                           onClick={() => setOpenToolbarPanel((prev) => (prev === "filter" ? null : "filter"))}
-                          className={`rounded-lg p-2.5 transition-all duration-200 hover:bg-white hover:text-indigo-600 hover:shadow-sm ${
-                            openToolbarPanel === "filter" || hasFilters || statusFilter !== "Semua"
-                              ? "bg-white text-indigo-600 shadow-sm"
-                              : "text-gray-600"
-                          }`}
+                          className={`rounded-lg p-2.5 transition-all duration-200 hover:bg-white hover:text-indigo-600 hover:shadow-sm ${openToolbarPanel === "filter" || hasFilters || statusFilter !== "Semua"
+                            ? "bg-white text-indigo-600 shadow-sm"
+                            : "text-gray-600"
+                            }`}
                           title="Filter"
                         >
                           <Funnel className="h-[18px] w-[18px]" />
@@ -345,11 +360,10 @@ export default function StatementsPage() {
                         <button
                           type="button"
                           onClick={() => setOpenToolbarPanel((prev) => (prev === "date" ? null : "date"))}
-                          className={`rounded-lg p-2.5 transition-all duration-200 hover:bg-white hover:text-indigo-600 hover:shadow-sm ${
-                            openToolbarPanel === "date" || dateFrom || dateTo
-                              ? "bg-white text-indigo-600 shadow-sm"
-                              : "text-gray-600"
-                          }`}
+                          className={`rounded-lg p-2.5 transition-all duration-200 hover:bg-white hover:text-indigo-600 hover:shadow-sm ${openToolbarPanel === "date" || dateFrom || dateTo
+                            ? "bg-white text-indigo-600 shadow-sm"
+                            : "text-gray-600"
+                            }`}
                           title="Date Range"
                         >
                           <CalendarRange className="h-[18px] w-[18px]" />
@@ -440,11 +454,30 @@ export default function StatementsPage() {
                 </div>
 
                 {selected.size > 0 && (
-                  <div className="mt-3 flex justify-end">
-                    <GlowButton variant="secondary" icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-                      loading={reconciling} onClick={bulkReconcile} size="sm">
-                      Rekonsiliasi {selected.size} terpilih
-                    </GlowButton>
+                  <div className="mt-3 flex justify-end gap-2">
+                    {confirmBulkDelete ? (
+                      <>
+                        <span className="text-xs text-red-500 self-center">Hapus {selected.size} statement?</span>
+                        <GlowButton variant="danger" icon={<Trash2 className="h-3.5 w-3.5" />}
+                          loading={bulkDeleting} onClick={bulkDelete} size="sm">
+                          Ya, Hapus
+                        </GlowButton>
+                        <GlowButton variant="secondary" onClick={() => setConfirmBulkDelete(false)} size="sm">
+                          Batal
+                        </GlowButton>
+                      </>
+                    ) : (
+                      <>
+                        <GlowButton variant="secondary" icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                          loading={reconciling} onClick={bulkReconcile} size="sm">
+                          Rekonsiliasi {selected.size} terpilih
+                        </GlowButton>
+                        <GlowButton variant="danger" icon={<Trash2 className="h-3.5 w-3.5" />}
+                          onClick={() => setConfirmBulkDelete(true)} size="sm">
+                          Hapus {selected.size} terpilih
+                        </GlowButton>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -457,7 +490,7 @@ export default function StatementsPage() {
                         <input type="checkbox" checked={allPageSelected} onChange={toggleAll}
                           className="rounded border-slate-300 accent-teal-600" />
                       </th>
-                      {["Bank / File", "Nasabah", "Periode", "Saldo Akhir", "Confidence", "Flag Anomali", "Status"].map((h) => (
+                      {["Bank / File", "Nasabah", "Periode", "Saldo Akhir", "Confidence", "Flag Anomali", "Status", "Analis"].map((h) => (
                         <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-500">{h}</th>
                       ))}
                       <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-500">Action</th>
@@ -466,7 +499,7 @@ export default function StatementsPage() {
                   <tbody>
                     {paginated.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-400">
+                        <td colSpan={10} className="px-4 py-12 text-center text-sm text-slate-400">
                           Tidak ada statement yang sesuai filter.
                         </td>
                       </tr>
@@ -492,13 +525,12 @@ export default function StatementsPage() {
                           {formatIDR(s.closing_balance)}
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
-                            (s.statement_confidence ?? 0) >= 0.95
-                              ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                              : (s.statement_confidence ?? 0) >= 0.85
-                                ? "bg-amber-50 text-amber-700 ring-amber-200"
-                                : "bg-red-50 text-red-700 ring-red-200"
-                          }`}>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${(s.statement_confidence ?? 0) >= 0.95
+                            ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                            : (s.statement_confidence ?? 0) >= 0.85
+                              ? "bg-amber-50 text-amber-700 ring-amber-200"
+                              : "bg-red-50 text-red-700 ring-red-200"
+                            }`}>
                             {pct(s.statement_confidence)}
                           </span>
                           {(s.low_confidence_count ?? 0) > 0 && (
@@ -540,6 +572,9 @@ export default function StatementsPage() {
                               </div>
                             )}
                           </div>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <span className="text-xs text-slate-500">Rachmad M.</span>
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="relative inline-block">

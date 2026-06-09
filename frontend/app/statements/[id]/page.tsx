@@ -1,6 +1,7 @@
 "use client";
 import { Fragment, useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MetricCard } from "@/components/statement/MetricCard";
@@ -11,7 +12,7 @@ import { statementsApi, Statement, Transaction, RiskResult, FlagDetail } from "@
 import { formatIDR, formatDate, formatPct } from "@/lib/utils";
 import {
   ArrowDownCircle, ArrowUpCircle, Scale, TrendingUp,
-  Download, RefreshCw, CheckCircle2, AlertTriangle, Filter, FileDown, Pencil, X, Save, Check, MoreHorizontal,
+  Download, RefreshCw, CheckCircle2, AlertTriangle, Filter, FileDown, Pencil, X, Save, Check, MoreHorizontal, ArrowLeft,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -105,8 +106,8 @@ function exportCSV(txns: Transaction[], filename: string) {
   ]);
   const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a"); a.href = url; a.download = filename; a.click();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
@@ -173,14 +174,37 @@ export default function StatementDetailPage() {
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [localCategories, setLocalCategories] = useState<Record<string, string>>({});
-  const [reviewDrafts, setReviewDrafts] = useState<Record<string, {
-    description_raw: string;
-    debit: string;
-    credit: string;
-    balance: string;
-    category: string;
-  }>>({});
+  const [reviewDrafts, setReviewDrafts] = useState<Record<string, { description_raw: string; debit: string; credit: string; balance: string; category: string }>>({});
+  const [reconciling, setReconciling] = useState(false);
+  const [reparsing, setReparsing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
+  const handleRefresh = async () => { setRefreshing(true); await refetch(); setRefreshing(false); };
+  const handleReparse = async () => {
+    if (!stmt) return;
+    setReparsing(true);
+    try { await statementsApi.reparse(stmt.id); await refetch(); toast.success("Re-parse dimulai"); }
+    catch { toast.error("Gagal re-parse"); }
+    finally { setReparsing(false); }
+  };
+  const handleReconcile = async () => {
+    if (!stmt) return;
+    setReconciling(true);
+    try { await statementsApi.reconcile(stmt.id); await refetch(); toast.success("Rekonsiliasi berhasil"); }
+    catch { toast.error("Gagal rekonsiliasi"); }
+    finally { setReconciling(false); }
+  };
+  const handleExportExcel = () => {
+    if (!stmt || txns.length === 0) { toast.error("Tidak ada data"); return; }
+    const headers = ["Tanggal", "Deskripsi", "Kredit", "Debit", "Saldo", "Kategori", "Flag"];
+    const rows = txns.map((t) => [t.date || "", `"${(t.description_raw || "").replace(/"/g, '""')}"`, t.credit || 0, t.debit || 0, t.balance || "", t.category || "", t.flags?.join("; ") || ""]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `transactions-${stmt.id.slice(0, 8)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${txns.length} transaksi diexport`);
+  };
   useEffect(() => {
     if (stmt) {
       let cancelled = false;
@@ -188,7 +212,7 @@ export default function StatementDetailPage() {
       statementsApi.allTransactions(id)
         .then((data) => { if (!cancelled) setTxns(data); })
         .finally(() => { if (!cancelled) setTxnLoading(false); });
-      statementsApi.risk(id).then(({ data }) => setRisk(data)).catch(() => {});
+      statementsApi.risk(id).then(({ data }) => setRisk(data)).catch(() => { });
       return () => { cancelled = true; };
     }
   }, [id, stmt?.status]);
@@ -221,8 +245,8 @@ export default function StatementDetailPage() {
   const inOutData = txns.reduce<Record<string, { in: number; out: number }>>((acc, t) => {
     const month = t.date.slice(0, 7);
     if (!acc[month]) acc[month] = { in: 0, out: 0 };
-    acc[month].in  += Number(t.credit || 0);
-    acc[month].out += Number(t.debit  || 0);
+    acc[month].in += Number(t.credit || 0);
+    acc[month].out += Number(t.debit || 0);
     return acc;
   }, {});
   const barData = Object.entries(inOutData).map(([month, v]) => ({ month, ...v }));
@@ -232,10 +256,10 @@ export default function StatementDetailPage() {
   const focusedTxns = focusedFlag ? txns.filter((txn) => focusedRows.has(txn.row)) : [];
 
   // Anomaly detection: transactions with debit or credit > 3× average
-  const avgDebit  = txns.filter((t) => t.debit).reduce((a, t) => a + Number(t.debit), 0) / (txns.filter((t) => t.debit).length || 1);
+  const avgDebit = txns.filter((t) => t.debit).reduce((a, t) => a + Number(t.debit), 0) / (txns.filter((t) => t.debit).length || 1);
   const avgCredit = txns.filter((t) => t.credit).reduce((a, t) => a + Number(t.credit), 0) / (txns.filter((t) => t.credit).length || 1);
   const isAnomaly = (t: Transaction) =>
-    (t.debit  != null && Number(t.debit)  > avgDebit  * 3) ||
+    (t.debit != null && Number(t.debit) > avgDebit * 3) ||
     (t.credit != null && Number(t.credit) > avgCredit * 3);
 
   // Category filter options
@@ -258,16 +282,16 @@ export default function StatementDetailPage() {
     for (const t of txnsWithLocal) {
       const cat = t.category ?? "Lainnya";
       if (!map[cat]) map[cat] = { debit: 0, credit: 0, count: 0 };
-      map[cat].debit  += Number(t.debit  || 0);
+      map[cat].debit += Number(t.debit || 0);
       map[cat].credit += Number(t.credit || 0);
-      map[cat].count  += 1;
+      map[cat].count += 1;
     }
     return Object.entries(map)
       .map(([name, v]) => ({ name: name.replace(/_/g, " "), debit: v.debit / 1e6, credit: v.credit / 1e6, count: v.count }))
       .sort((a, b) => (b.debit + b.credit) - (a.debit + a.credit));
   })();
 
-  const CAT_COLORS = ["#6366f1","#14b8a6","#f59e0b","#ef4444","#10b981","#8b5cf6","#f97316","#06b6d4"];
+  const CAT_COLORS = ["#6366f1", "#14b8a6", "#f59e0b", "#ef4444", "#10b981", "#8b5cf6", "#f97316", "#06b6d4"];
   const categoriesUpdated = ["Semua", ...Array.from(new Set([...CATEGORY_OPTIONS, ...(txnsWithLocal.map((t) => t.category).filter(Boolean) as string[])]))];
 
   const replaceTxn = (updated: Transaction) => {
@@ -321,6 +345,10 @@ export default function StatementDetailPage() {
   return (
     <AppShell>
       <div className="space-y-6">
+        {/* Back navigation */}
+        <Link href="/statements" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-teal-600 transition-colors font-medium">
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Statements
+        </Link>
         {/* Header card */}
         <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-card p-6 shadow-sm">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
@@ -406,16 +434,16 @@ export default function StatementDetailPage() {
           {/* ── Ringkasan ─────────────────────────── */}
           <TabsContent value="ringkasan">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-              <MetricCard label="Total Kredit"    value={formatIDR(risk?.total_credit ?? null)}    highlight="green" icon={<ArrowDownCircle className="w-4 h-4" />} />
-              <MetricCard label="Total Debit"     value={formatIDR(risk?.total_debit ?? null)}     highlight="red"   icon={<ArrowUpCircle className="w-4 h-4" />} />
-              <MetricCard label="Net Flow"        value={formatIDR(risk?.net_flow ?? null)}        highlight={risk?.net_flow != null && risk.net_flow >= 0 ? "green" : "red"} icon={<Scale className="w-4 h-4" />} />
+              <MetricCard label="Total Kredit" value={formatIDR(risk?.total_credit ?? null)} highlight="green" icon={<ArrowDownCircle className="w-4 h-4" />} />
+              <MetricCard label="Total Debit" value={formatIDR(risk?.total_debit ?? null)} highlight="red" icon={<ArrowUpCircle className="w-4 h-4" />} />
+              <MetricCard label="Net Flow" value={formatIDR(risk?.net_flow ?? null)} highlight={risk?.net_flow != null && risk.net_flow >= 0 ? "green" : "red"} icon={<Scale className="w-4 h-4" />} />
               <MetricCard label="Saldo Rata-rata" value={formatIDR(risk?.avg_daily_balance ?? null)} highlight="blue" icon={<TrendingUp className="w-4 h-4" />} />
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-              <MetricCard label="Saldo Awal"    value={formatIDR(stmt.opening_balance)} />
-              <MetricCard label="Saldo Akhir"   value={formatIDR(stmt.closing_balance)} />
+              <MetricCard label="Saldo Awal" value={formatIDR(stmt.opening_balance)} />
+              <MetricCard label="Saldo Akhir" value={formatIDR(stmt.closing_balance)} />
               <MetricCard label="Saldo Minimum" value={formatIDR(risk?.min_balance ?? null)} />
-              <MetricCard label="DSR Estimasi"  value={risk?.dsr != null ? formatPct(risk.dsr) : "—"} sub="Debt Service Ratio" />
+              <MetricCard label="DSR Estimasi" value={risk?.dsr != null ? formatPct(risk.dsr) : "—"} sub="Debt Service Ratio" />
             </div>
 
             {chartData.length > 0 && (
@@ -425,7 +453,7 @@ export default function StatementDetailPage() {
                   <LineChart data={chartData}>
                     <CartesianGrid {...GRID_PROPS} />
                     <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} />
-                    <YAxis tick={AXIS_TICK} tickLine={false} tickFormatter={(v) => `${(v/1e6).toFixed(0)}M`} />
+                    <YAxis tick={AXIS_TICK} tickLine={false} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
                     <Tooltip {...CHART_TOOLTIP} formatter={(v) => formatIDR(Number(v ?? 0))} />
                     <Line type="monotone" dataKey="saldo" stroke="#14b8a6" dot={false} strokeWidth={2} />
                   </LineChart>
@@ -440,10 +468,10 @@ export default function StatementDetailPage() {
                   <BarChart data={barData}>
                     <CartesianGrid {...GRID_PROPS} />
                     <XAxis dataKey="month" tick={AXIS_TICK} tickLine={false} />
-                    <YAxis tick={AXIS_TICK} tickLine={false} tickFormatter={(v) => `${(v/1e6).toFixed(0)}M`} />
+                    <YAxis tick={AXIS_TICK} tickLine={false} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
                     <Tooltip {...CHART_TOOLTIP} formatter={(v) => formatIDR(Number(v ?? 0))} />
-                    <Bar dataKey="in"  fill="#10b981" name="Kredit" radius={[3,3,0,0]} />
-                    <Bar dataKey="out" fill="#f87171" name="Debit"  radius={[3,3,0,0]} />
+                    <Bar dataKey="in" fill="#10b981" name="Kredit" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="out" fill="#f87171" name="Debit" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -471,8 +499,8 @@ export default function StatementDetailPage() {
                           contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 12 }}
                           formatter={(v, name) => [`Rp ${Number(v).toFixed(1)}M`, name === "debit" ? "Debit" : "Kredit"]}
                         />
-                        <Bar dataKey="credit" name="Kredit" fill="#10b981" radius={[3,3,0,0]} />
-                        <Bar dataKey="debit"  name="Debit"  fill="#f87171" radius={[3,3,0,0]}>
+                        <Bar dataKey="credit" name="Kredit" fill="#10b981" radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="debit" name="Debit" fill="#f87171" radius={[3, 3, 0, 0]}>
                           {categoryBreakdown.map((_, idx) => <Cell key={idx} fill="#f87171" />)}
                         </Bar>
                       </BarChart>
@@ -500,298 +528,297 @@ export default function StatementDetailPage() {
                   </div>
                 </div>
 
-              <div className="rounded-xl border border-slate-200 bg-card overflow-hidden shadow-sm">
-                {/* Filter bar */}
-                <div className="flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
-                  <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 outline-none focus:border-teal-400 cursor-pointer"
-                  >
-                    {categoriesUpdated.map((c) => (
-                      <option key={c} value={c}>{c === "Semua" ? "Semua Kategori" : c.replace(/_/g, " ")}</option>
-                    ))}
-                  </select>
-                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={flagOnly}
-                      onChange={(e) => setFlagOnly(e.target.checked)}
-                      className="rounded accent-red-500"
-                    />
-                    <span className="text-xs text-slate-600">Hanya transaksi bermasalah</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={reviewOnly}
-                      onChange={(e) => setReviewOnly(e.target.checked)}
-                      className="rounded accent-amber-500"
-                    />
-                    <span className="text-xs text-slate-600">Butuh review</span>
-                  </label>
-                  <span className="text-xs text-slate-400 ml-auto">
-                    {filteredTxns.length} dari {txns.length} transaksi
-                  </span>
-                  <button
-                    onClick={() => exportCSV(filteredTxns, `transaksi-${id}.csv`)}
-                    className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-all"
-                  >
-                    <FileDown className="h-3.5 w-3.5" /> Export CSV
-                  </button>
-                </div>
+                <div className="rounded-xl border border-slate-200 bg-card overflow-hidden shadow-sm">
+                  {/* Filter bar */}
+                  <div className="flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+                    <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <select
+                      value={categoryFilter}
+                      onChange={(e) => setCategoryFilter(e.target.value)}
+                      className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 outline-none focus:border-teal-400 cursor-pointer"
+                    >
+                      {categoriesUpdated.map((c) => (
+                        <option key={c} value={c}>{c === "Semua" ? "Semua Kategori" : c.replace(/_/g, " ")}</option>
+                      ))}
+                    </select>
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={flagOnly}
+                        onChange={(e) => setFlagOnly(e.target.checked)}
+                        className="rounded accent-red-500"
+                      />
+                      <span className="text-xs text-slate-600">Hanya transaksi bermasalah</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={reviewOnly}
+                        onChange={(e) => setReviewOnly(e.target.checked)}
+                        className="rounded accent-amber-500"
+                      />
+                      <span className="text-xs text-slate-600">Butuh review</span>
+                    </label>
+                    <span className="text-xs text-slate-400 ml-auto">
+                      {filteredTxns.length} dari {txns.length} transaksi
+                    </span>
+                    <button
+                      onClick={() => exportCSV(filteredTxns, `transaksi-${id}.csv`)}
+                      className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-all"
+                    >
+                      <FileDown className="h-3.5 w-3.5" /> Export CSV
+                    </button>
+                  </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-slate-100">
-                      <tr>
-                        {["#", "Tanggal", "Keterangan", "Debit", "Kredit", "Saldo", "Kategori", "Confidence", "Flag", "Aksi"].map((h) => (
-                          <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-600 whitespace-nowrap">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTxns.length === 0 ? (
-                        <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-slate-400">Tidak ada transaksi sesuai filter.</td></tr>
-                      ) : filteredTxns.map((t) => {
-                        const anomaly = isAnomaly(t);
-                        const needsReview = needsHumanReview(t);
-                        const draft = reviewDrafts[t.id];
-                        const anomalyText = anomaly ? anomalyReason(t, avgDebit, avgCredit) : "";
-                        return (
-                          <Fragment key={t.id}>
-                          <tr
-                            className={`border-b border-slate-100 transition-colors hover:bg-slate-50 ${
-                              anomaly         ? "bg-orange-50/60 border-l-2 border-l-orange-400"
-                              : t.flags?.length  ? "bg-red-50/40"
-                              : needsReview ? "bg-amber-50/40" : ""
-                            }`}
-                          >
-                            <td className="px-4 py-2.5 text-slate-700 text-xs font-mono">{t.row}</td>
-                            <td className="px-4 py-2.5 text-slate-400 whitespace-nowrap text-xs">{formatDate(t.date)}</td>
-                            <td className="px-4 py-2.5 max-w-xs truncate text-slate-600 text-xs" title={t.description_raw}>{t.description_raw}</td>
-                            <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap text-xs">
-                              {t.debit ? (
-                                <span className={anomaly && t.debit != null && Number(t.debit) > avgDebit * 3 ? "text-orange-600 font-bold" : "text-red-600"}>
-                                  {formatIDR(Number(t.debit))}
-                                </span>
-                              ) : ""}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap text-xs">
-                              {t.credit ? (
-                                <span className={anomaly && t.credit != null && Number(t.credit) > avgCredit * 3 ? "text-orange-600 font-bold" : "text-emerald-700"}>
-                                  {formatIDR(Number(t.credit))}
-                                </span>
-                              ) : ""}
-                            </td>
-                            <td className="px-4 py-2.5 text-right text-slate-400 whitespace-nowrap text-xs">
-                              {formatIDR(t.balance != null ? Number(t.balance) : null)}
-                            </td>
-                            <td className="px-4 py-2.5 group/cat">
-                              {editingCategoryId === t.id ? (
-                                <div className="flex items-center gap-1">
-                                  <select
-                                    autoFocus
-                                    defaultValue={t.category ?? ""}
-                                    onChange={(e) => {
-                                      setLocalCategories((prev) => ({ ...prev, [t.id]: e.target.value }));
-                                      setEditingCategoryId(null);
-                                    }}
-                                    className="text-[10px] rounded border border-teal-300 bg-white px-1.5 py-0.5 text-slate-700 outline-none"
-                                  >
-                                    {categoriesUpdated.filter((c) => c !== "Semua").map((c) => (
-                                      <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
-                                    ))}
-                                  </select>
-                                  <button onClick={() => setEditingCategoryId(null)}>
-                                    <X className="h-3 w-3 text-slate-400" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1">
-                                  {t.category && (
-                                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 rounded-full text-slate-500">
-                                      {t.category.replace(/_/g, " ")}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="border-b border-slate-100">
+                        <tr>
+                          {["#", "Tanggal", "Keterangan", "Debit", "Kredit", "Saldo", "Kategori", "Confidence", "Flag", "Aksi"].map((h) => (
+                            <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-600 whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredTxns.length === 0 ? (
+                          <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-slate-400">Tidak ada transaksi sesuai filter.</td></tr>
+                        ) : filteredTxns.map((t) => {
+                          const anomaly = isAnomaly(t);
+                          const needsReview = needsHumanReview(t);
+                          const draft = reviewDrafts[t.id];
+                          const anomalyText = anomaly ? anomalyReason(t, avgDebit, avgCredit) : "";
+                          return (
+                            <Fragment key={t.id}>
+                              <tr
+                                className={`border-b border-slate-100 transition-colors hover:bg-slate-50 ${anomaly ? "bg-orange-50/60 border-l-2 border-l-orange-400"
+                                  : t.flags?.length ? "bg-red-50/40"
+                                    : needsReview ? "bg-amber-50/40" : ""
+                                  }`}
+                              >
+                                <td className="px-4 py-2.5 text-slate-700 text-xs font-mono">{t.row}</td>
+                                <td className="px-4 py-2.5 text-slate-400 whitespace-nowrap text-xs">{formatDate(t.date)}</td>
+                                <td className="px-4 py-2.5 max-w-xs truncate text-slate-600 text-xs" title={t.description_raw}>{t.description_raw}</td>
+                                <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap text-xs">
+                                  {t.debit ? (
+                                    <span className={anomaly && t.debit != null && Number(t.debit) > avgDebit * 3 ? "text-orange-600 font-bold" : "text-red-600"}>
+                                      {formatIDR(Number(t.debit))}
                                     </span>
-                                  )}
-                                  <button
-                                    onClick={() => setEditingCategoryId(t.id)}
-                                    className="opacity-0 group-hover/cat:opacity-100 transition-opacity p-0.5 rounded hover:bg-slate-100"
-                                    title="Edit kategori"
-                                  >
-                                    <Pencil className="h-3 w-3 text-slate-400" />
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              {needsReview ? (
-                                <div title={confidenceReason(t)}>
-                                  <span className="inline-flex min-w-12 justify-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200">
-                                    {confidencePct(t)}%
-                                  </span>
-                                  <p className="mt-1 text-[10px] leading-4 text-amber-700">{confidenceTier(t)}</p>
-                                </div>
-                              ) : (
-                                <div title={confidenceReason(t)}>
-                                  <span className="inline-flex min-w-12 justify-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                                    {confidencePct(t)}%
-                                  </span>
-                                  <p className="mt-1 text-[10px] leading-4 text-emerald-700">{confidenceTier(t)}</p>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <div className="flex flex-wrap gap-1">
-                                {anomaly && (
-                                  <span
-                                    className="text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded-full ring-1 ring-orange-200"
-                                    title={anomalyText}
-                                  >
-                                    anomali
-                                  </span>
-                                )}
-                                {(t.flags || []).map((f) => (
-                                  <span
-                                    key={f}
-                                    className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full ring-1 ring-red-200"
-                                    title={FLAG_REASONS[f] ?? "Flag risiko dari rule parser."}
-                                  >
-                                    {f}
-                                  </span>
-                                ))}
-                                {t.is_manually_corrected && (
-                                  <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full ring-1 ring-emerald-200">human</span>
-                                )}
-                              </div>
-                              {anomaly && <p className="mt-1 max-w-[180px] text-[10px] leading-4 text-orange-700">{anomalyText}</p>}
-                              {(t.flags || []).length > 0 && (
-                                <p className="mt-1 max-w-[180px] text-[10px] leading-4 text-red-700">
-                                  {(t.flags || []).map((f) => FLAG_REASONS[f] ?? "Flag risiko dari rule parser.").join(" ")}
-                                </p>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              {needsReview ? (
-                                <div className="relative inline-block">
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenActionId(openActionId === t.id ? null : t.id)}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-                                    title="Aksi review"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </button>
-                                  {openActionId === t.id && (
-                                    <div className="absolute right-0 z-20 mt-1 w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
-                                      <button
-                                        type="button"
-                                        onClick={() => { setOpenActionId(null); confirmTxn(t); }}
-                                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                                        title="Konfirmasi row ini sebagai benar"
+                                  ) : ""}
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap text-xs">
+                                  {t.credit ? (
+                                    <span className={anomaly && t.credit != null && Number(t.credit) > avgCredit * 3 ? "text-orange-600 font-bold" : "text-emerald-700"}>
+                                      {formatIDR(Number(t.credit))}
+                                    </span>
+                                  ) : ""}
+                                </td>
+                                <td className="px-4 py-2.5 text-right text-slate-400 whitespace-nowrap text-xs">
+                                  {formatIDR(t.balance != null ? Number(t.balance) : null)}
+                                </td>
+                                <td className="px-4 py-2.5 group/cat">
+                                  {editingCategoryId === t.id ? (
+                                    <div className="flex items-center gap-1">
+                                      <select
+                                        autoFocus
+                                        defaultValue={t.category ?? ""}
+                                        onChange={(e) => {
+                                          setLocalCategories((prev) => ({ ...prev, [t.id]: e.target.value }));
+                                          setEditingCategoryId(null);
+                                        }}
+                                        className="text-[10px] rounded border border-teal-300 bg-white px-1.5 py-0.5 text-slate-700 outline-none"
                                       >
-                                        <Check className="h-3.5 w-3.5" /> Confirm
+                                        {categoriesUpdated.filter((c) => c !== "Semua").map((c) => (
+                                          <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
+                                        ))}
+                                      </select>
+                                      <button onClick={() => setEditingCategoryId(null)}>
+                                        <X className="h-3 w-3 text-slate-400" />
                                       </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1">
+                                      {t.category && (
+                                        <span className="text-[10px] px-2 py-0.5 bg-slate-100 rounded-full text-slate-500">
+                                          {t.category.replace(/_/g, " ")}
+                                        </span>
+                                      )}
                                       <button
-                                        type="button"
-                                        onClick={() => { setOpenActionId(null); startRevision(t); }}
-                                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50"
-                                        title="Revisi data row ini"
+                                        onClick={() => setEditingCategoryId(t.id)}
+                                        className="opacity-0 group-hover/cat:opacity-100 transition-opacity p-0.5 rounded hover:bg-slate-100"
+                                        title="Edit kategori"
                                       >
-                                        <Pencil className="h-3.5 w-3.5" /> Revisi
+                                        <Pencil className="h-3 w-3 text-slate-400" />
                                       </button>
                                     </div>
                                   )}
-                                </div>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600">
-                                  <CheckCircle2 className="h-3 w-3" /> OK
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                          {editingReviewId === t.id && draft && (
-                            <tr className="border-b border-amber-100 bg-amber-50/70">
-                              <td colSpan={10} className="px-4 py-3">
-                                <div className="grid gap-2 md:grid-cols-[1.7fr_0.7fr_0.7fr_0.7fr_1fr_auto] md:items-end">
-                                  <label className="space-y-1">
-                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Keterangan</span>
-                                    <input
-                                      value={draft.description_raw}
-                                      onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, description_raw: e.target.value } }))}
-                                      className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
-                                    />
-                                  </label>
-                                  <label className="space-y-1">
-                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Debit</span>
-                                    <input
-                                      value={draft.debit}
-                                      onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, debit: e.target.value } }))}
-                                      className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
-                                    />
-                                  </label>
-                                  <label className="space-y-1">
-                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Kredit</span>
-                                    <input
-                                      value={draft.credit}
-                                      onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, credit: e.target.value } }))}
-                                      className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
-                                    />
-                                  </label>
-                                  <label className="space-y-1">
-                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Saldo</span>
-                                    <input
-                                      value={draft.balance}
-                                      onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, balance: e.target.value } }))}
-                                      className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
-                                    />
-                                  </label>
-                                  <label className="space-y-1">
-                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Kategori</span>
-                                    <select
-                                      value={draft.category}
-                                      onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, category: e.target.value } }))}
-                                      className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
-                                    >
-                                      <option value="">Tanpa kategori</option>
-                                      {categoriesUpdated.filter((c) => c !== "Semua").map((c) => (
-                                        <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  <div className="flex gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => saveRevision(t)}
-                                      className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                                    >
-                                      <Save className="h-3.5 w-3.5" /> Simpan
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingReviewId(null)}
-                                      className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
-                                    >
-                                      Batal
-                                    </button>
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  {needsReview ? (
+                                    <div title={confidenceReason(t)}>
+                                      <span className="inline-flex min-w-12 justify-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200">
+                                        {confidencePct(t)}%
+                                      </span>
+                                      <p className="mt-1 text-[10px] leading-4 text-amber-700">{confidenceTier(t)}</p>
+                                    </div>
+                                  ) : (
+                                    <div title={confidenceReason(t)}>
+                                      <span className="inline-flex min-w-12 justify-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                                        {confidencePct(t)}%
+                                      </span>
+                                      <p className="mt-1 text-[10px] leading-4 text-emerald-700">{confidenceTier(t)}</p>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <div className="flex flex-wrap gap-1">
+                                    {anomaly && (
+                                      <span
+                                        className="text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded-full ring-1 ring-orange-200"
+                                        title={anomalyText}
+                                      >
+                                        anomali
+                                      </span>
+                                    )}
+                                    {(t.flags || []).map((f) => (
+                                      <span
+                                        key={f}
+                                        className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full ring-1 ring-red-200"
+                                        title={FLAG_REASONS[f] ?? "Flag risiko dari rule parser."}
+                                      >
+                                        {f}
+                                      </span>
+                                    ))}
+                                    {t.is_manually_corrected && (
+                                      <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full ring-1 ring-emerald-200">human</span>
+                                    )}
                                   </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                          </Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                                  {anomaly && <p className="mt-1 max-w-[180px] text-[10px] leading-4 text-orange-700">{anomalyText}</p>}
+                                  {(t.flags || []).length > 0 && (
+                                    <p className="mt-1 max-w-[180px] text-[10px] leading-4 text-red-700">
+                                      {(t.flags || []).map((f) => FLAG_REASONS[f] ?? "Flag risiko dari rule parser.").join(" ")}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  {needsReview ? (
+                                    <div className="relative inline-block">
+                                      <button
+                                        type="button"
+                                        onClick={() => setOpenActionId(openActionId === t.id ? null : t.id)}
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                                        title="Aksi review"
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </button>
+                                      {openActionId === t.id && (
+                                        <div className="absolute right-0 z-20 mt-1 w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                                          <button
+                                            type="button"
+                                            onClick={() => { setOpenActionId(null); confirmTxn(t); }}
+                                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                            title="Konfirmasi row ini sebagai benar"
+                                          >
+                                            <Check className="h-3.5 w-3.5" /> Confirm
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => { setOpenActionId(null); startRevision(t); }}
+                                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                                            title="Revisi data row ini"
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" /> Revisi
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600">
+                                      <CheckCircle2 className="h-3 w-3" /> OK
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                              {editingReviewId === t.id && draft && (
+                                <tr className="border-b border-amber-100 bg-amber-50/70">
+                                  <td colSpan={10} className="px-4 py-3">
+                                    <div className="grid gap-2 md:grid-cols-[1.7fr_0.7fr_0.7fr_0.7fr_1fr_auto] md:items-end">
+                                      <label className="space-y-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Keterangan</span>
+                                        <input
+                                          value={draft.description_raw}
+                                          onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, description_raw: e.target.value } }))}
+                                          className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
+                                        />
+                                      </label>
+                                      <label className="space-y-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Debit</span>
+                                        <input
+                                          value={draft.debit}
+                                          onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, debit: e.target.value } }))}
+                                          className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
+                                        />
+                                      </label>
+                                      <label className="space-y-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Kredit</span>
+                                        <input
+                                          value={draft.credit}
+                                          onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, credit: e.target.value } }))}
+                                          className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
+                                        />
+                                      </label>
+                                      <label className="space-y-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Saldo</span>
+                                        <input
+                                          value={draft.balance}
+                                          onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, balance: e.target.value } }))}
+                                          className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
+                                        />
+                                      </label>
+                                      <label className="space-y-1">
+                                        <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Kategori</span>
+                                        <select
+                                          value={draft.category}
+                                          onChange={(e) => setReviewDrafts((prev) => ({ ...prev, [t.id]: { ...draft, category: e.target.value } }))}
+                                          className="w-full rounded-md border border-amber-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-amber-400"
+                                        >
+                                          <option value="">Tanpa kategori</option>
+                                          {categoriesUpdated.filter((c) => c !== "Semua").map((c) => (
+                                            <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
+                                          ))}
+                                        </select>
+                                      </label>
+                                      <div className="flex gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => saveRevision(t)}
+                                          className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                                        >
+                                          <Save className="h-3.5 w-3.5" /> Simpan
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingReviewId(null)}
+                                          className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
+                                        >
+                                          Batal
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-600 flex items-center gap-2">
+                    {stmt.is_reconciled
+                      ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Rekonsiliasi saldo: OK</>
+                      : <><AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Review · delta: {formatIDR(Number(stmt.reconciliation_delta))}</>}
+                  </div>
                 </div>
-                <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-600 flex items-center gap-2">
-                  {stmt.is_reconciled
-                    ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Rekonsiliasi saldo: OK</>
-                    : <><AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Review · delta: {formatIDR(Number(stmt.reconciliation_delta))}</>}
-                </div>
-              </div>
               </div>
             )}
           </TabsContent>
@@ -890,6 +917,28 @@ export default function StatementDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* R4 — Sticky action bar */}
+      {stmt && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-sm px-6 py-3 flex items-center justify-center gap-3 shadow-lg">
+          <button onClick={handleRefresh} disabled={refreshing} className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+          </button>
+          {stmt.status === "failed" && (
+            <button onClick={handleReparse} disabled={reparsing} className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-600">
+              <RefreshCw className={`h-3.5 w-3.5 ${reparsing ? "animate-spin" : ""}`} /> Re-parse
+            </button>
+          )}
+          {!stmt.is_reconciled && (stmt.status === "done" || stmt.status === "needs_review") && (
+            <button onClick={handleReconcile} disabled={reconciling} className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-600">
+              <CheckCircle2 className="h-3.5 w-3.5" /> {reconciling ? "..." : "Rekonsiliasi"}
+            </button>
+          )}
+          <button onClick={handleExportExcel} className="flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600">
+            <Download className="h-3.5 w-3.5" /> Export Excel
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

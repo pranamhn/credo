@@ -175,7 +175,7 @@ def _parse_line_items(lines: list[str], report: PnlReport) -> None:
 def _find_table_header(lines: list[str]) -> Optional[int]:
     for idx, line in enumerate(lines):
         low = line.lower()
-        if low.startswith("deskripsi ") and "total" in low and "(idr)" in low:
+        if (low.startswith("deskripsi ") or low.startswith("description ")) and "total" in low and "(idr)" in low:
             return idx
     return None
 
@@ -223,13 +223,13 @@ def _parse_item_line(line: str, expected_amounts: int) -> Optional[tuple[str, li
 
 def _build_summaries(report: PnlReport) -> None:
     summary_patterns = {
-        "revenue": r"^jumlah\s+pendapatan$",
-        "cost_of_goods_sold": r"^jumlah\s+beban\s+pokok\s+penjualan$",
-        "gross_profit": r"^laba\s+kotor$",
-        "operating_expense": r"^jumlah\s+beban\s+operasional$",
-        "operating_profit": r"^pendapatan\s+operasional$",
-        "non_operating": r"^jumlah\s+pendapatan\s+dan\s+beban\s+non\s+operasional$",
-        "net_income": r"^laba\s+bersih$",
+        "revenue":            r"^(jumlah\s+pendapatan|total\s+revenue)$",
+        "cost_of_goods_sold": r"^(jumlah\s+beban\s+pokok\s+penjualan|total\s+cost\s+of\s+goods\s+sold)$",
+        "gross_profit":       r"^(laba\s+kotor|gross\s+profit)$",
+        "operating_expense":  r"^(jumlah\s+beban\s+operasional|total\s+operating\s+expenses?)$",
+        "operating_profit":   r"^(pendapatan\s+operasional|operating\s+(?:revenue|profit(?:/loss)?))$",
+        "non_operating":      r"^(jumlah\s+pendapatan\s+dan\s+beban\s+non\s+operasional|total\s+other\s+income\s+and\s+expenses?)$",
+        "net_income":         r"^(laba\s+bersih|net\s+profit(?:/loss)?)$",
     }
 
     for key, pattern in summary_patterns.items():
@@ -276,13 +276,15 @@ def _contains_amount(line: str) -> bool:
 
 def _looks_like_repeated_header(line: str) -> bool:
     low = line.lower()
-    return low.startswith("deskripsi ") and "total" in low
+    return (low.startswith("deskripsi ") or low.startswith("description ")) and "total" in low
 
 
 def _is_report_chrome(line: str) -> bool:
     low = line.lower()
     return (
         "laba/rugi" in low
+        or re.match(r"^profit[/\s]+(loss|rugi)\b", low) is not None   # title only, not "NET PROFIT/LOSS"
+        or "profit or loss" in low
         or low.startswith("from period ")
         or low.startswith("branch :")
         or low.startswith("currency :")

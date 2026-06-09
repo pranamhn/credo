@@ -151,14 +151,28 @@ function setLS<T>(key: string, val: T): void {
 }
 
 export const localData = {
-  getLapkeu:     (id: string) => getLS<FinancialYear[]>(`credo-lapkeu-${id}`, []),
-  saveLapkeu:    (id: string, v: FinancialYear[]) => setLS(`credo-lapkeu-${id}`, v),
-  getMemo:       (id: string) => getLS<CreditMemo | null>(`credo-memo-${id}`, null),
-  saveMemo:      (id: string, v: CreditMemo) => setLS(`credo-memo-${id}`, v),
-  getLoans:      () => getLS<LoanFacility[]>("credo-loans", []),
-  saveLoans:     (v: LoanFacility[]) => setLS("credo-loans", v),
-  getWatchlist:  () => getLS<WatchlistEntry[]>("credo-watchlist", []),
-  saveWatchlist: (v: WatchlistEntry[]) => setLS("credo-watchlist", v),
+  getLapkeu:            (id: string) => getLS<FinancialYear[]>(`credo-lapkeu-${id}`, []),
+  saveLapkeu:           (id: string, v: FinancialYear[]) => setLS(`credo-lapkeu-${id}`, v),
+  getMemo:              (id: string) => getLS<CreditMemo | null>(`credo-memo-${id}`, null),
+  saveMemo:             (id: string, v: CreditMemo) => setLS(`credo-memo-${id}`, v),
+  getLoans:             () => getLS<LoanFacility[]>("credo-loans", []),
+  saveLoans:            (v: LoanFacility[]) => setLS("credo-loans", v),
+  getWatchlist:         () => getLS<WatchlistEntry[]>("credo-watchlist", []),
+  saveWatchlist:        (v: WatchlistEntry[]) => setLS("credo-watchlist", v),
+  getScoringAspects:    (id: string) => getLS<ScoringAspect[]>(`credo-scoring-${id}`, DEFAULT_SCORING_ASPECTS.map((a) => ({ ...a }))),
+  saveScoringAspects:   (id: string, v: ScoringAspect[]) => setLS(`credo-scoring-${id}`, v),
+  getDebtEntries:       (id: string) => getLS<DebtEntry[]>(`credo-debts-${id}`, []),
+  saveDebtEntries:      (id: string, v: DebtEntry[]) => setLS(`credo-debts-${id}`, v),
+  getDscrCicilanBaru:   (id: string) => getLS<number>(`credo-dscr-${id}`, 0),
+  saveDscrCicilanBaru:  (id: string, v: number) => setLS(`credo-dscr-${id}`, v),
+  getProfile:           (id: string) => getLS<CompanyProfile>(`credo-profile-${id}`, { ...DEFAULT_COMPANY_PROFILE }),
+  saveProfile:          (id: string, v: CompanyProfile) => setLS(`credo-profile-${id}`, v),
+  getApprovers:         () => getLS<ApproverEntry[]>("credo-approvers", DEFAULT_APPROVERS.map((a) => ({ ...a }))),
+  saveApprovers:        (v: ApproverEntry[]) => setLS("credo-approvers", v),
+  getApprovalDates:     (id: string) => getLS<Record<string, string>>(`credo-approval-dates-${id}`, {}),
+  saveApprovalDates:    (id: string, v: Record<string, string>) => setLS(`credo-approval-dates-${id}`, v),
+  getLegalDocs:         (id: string) => getLS<LegalDocs>(`credo-legaldocs-${id}`, {}),
+  saveLegalDocs:        (id: string, v: LegalDocs) => setLS(`credo-legaldocs-${id}`, v),
 };
 
 // ── Ratio computation ──
@@ -214,3 +228,95 @@ export function computeEWSTier(
 export const CKPN_RATES: Record<1 | 2 | 3 | 4 | 5, number> = {
   1: 0.01, 2: 0.05, 3: 0.15, 4: 0.50, 5: 1.00,
 };
+
+// ── Credit Scoring (weighted aspect model) ──
+
+export interface ScoringAspect {
+  id: string;
+  label: string;
+  bobot: number;   // 0–100
+  skor: number;    // 0–5
+  catatan: string;
+}
+
+export const DEFAULT_SCORING_ASPECTS: ScoringAspect[] = [
+  { id: "profitabilitas",  label: "Profitabilitas",           bobot: 20, skor: 3, catatan: "" },
+  { id: "rev_growth",      label: "Pertumbuhan Revenue",       bobot: 15, skor: 3, catatan: "" },
+  { id: "likuiditas",      label: "Likuiditas",                bobot: 15, skor: 3, catatan: "" },
+  { id: "leverage",        label: "Leverage / Solvabilitas",   bobot: 15, skor: 3, catatan: "" },
+  { id: "cashflow",        label: "Kualitas Cash Flow",        bobot: 10, skor: 3, catatan: "" },
+  { id: "manajemen",       label: "Manajemen & Governance",    bobot: 10, skor: 3, catatan: "" },
+  { id: "jaminan",         label: "Kualitas Jaminan",          bobot: 10, skor: 3, catatan: "" },
+  { id: "industri",        label: "Industri & Pasar",          bobot:  5, skor: 3, catatan: "" },
+];
+
+// ── Rincian Hutang / Kewajiban ──
+
+export interface DebtEntry {
+  id: string;
+  kreditur: string;
+  fasilitas: string;
+  plafon: number;
+  outstanding: number;
+  cicilanPerBulan: number;
+}
+
+// ── Legal Documents (NIB, AHU, AKTA per company) ──
+
+export interface LegalDocRef {
+  statementId: string;
+  filename: string;
+  uploadedAt: string;
+}
+
+export type LegalDocKey = "nib" | "ahu" | "akta";
+
+export type LegalDocs = Partial<Record<LegalDocKey, LegalDocRef>>;
+
+// ── Approval Config (global, shared across all companies) ──
+
+export interface ApproverEntry {
+  id: string;
+  jabatan: string;
+  nama: string;
+}
+
+export const DEFAULT_APPROVERS: ApproverEntry[] = [
+  { id: "ra",  jabatan: "Risk Analyst", nama: "" },
+  { id: "coo", jabatan: "COO",          nama: "" },
+  { id: "ceo", jabatan: "CEO",          nama: "" },
+];
+
+// ── Company Profile (Identitas Debitur) ──
+
+export interface CompanyProfile {
+  alamat: string;
+  tanggalBerdiri: string;      // DD/MM/YYYY
+  jenisUsaha: string;
+  kbli: string;
+  totalKaryawan: string;
+  direktur: string;
+  teleponDirektur: string;
+  npwp: string;
+  statusWajibPajak: string;   // Aktif / Non-Aktif / Belum Terdaftar
+  nibSiup: string;
+  masaBerlakuNib: string;
+  ringkasanEksekutif: string;
+  riskAnalystName: string;
+  riskAnalystDate: string;
+  cooName: string;
+  cooDate: string;
+  ceoName: string;
+  ceoDate: string;
+}
+
+export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
+  alamat: "", tanggalBerdiri: "", jenisUsaha: "", kbli: "",
+  totalKaryawan: "", direktur: "", teleponDirektur: "",
+  npwp: "", statusWajibPajak: "Aktif", nibSiup: "", masaBerlakuNib: "",
+  ringkasanEksekutif: "",
+  riskAnalystName: "", riskAnalystDate: "",
+  cooName: "", cooDate: "",
+  ceoName: "", ceoDate: "",
+};
+

@@ -4,9 +4,10 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader, DataCard } from "@/components/ui-kit";
 import {
   Users, Activity, ShieldCheck, Trash2, Plus, CheckCircle2,
-  AlertTriangle, XCircle, RefreshCw,
+  AlertTriangle, XCircle, RefreshCw, UserCheck, GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
+import { localData, ApproverEntry } from "@/lib/localData";
 
 // AD1 — Mock user data
 type Role = "Administrator" | "Analis Senior" | "Analis" | "Viewer";
@@ -50,7 +51,7 @@ const STATUS_META = {
 };
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<"users" | "health">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "health" | "approval">("users");
 
   // AD1 state
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
@@ -62,6 +63,39 @@ export default function AdminPage() {
 
   // AD2 state
   const [refreshing, setRefreshing] = useState(false);
+
+  // AD3 — Approval config state
+  const [approvers, setApprovers] = useState<ApproverEntry[]>(() => localData.getApprovers());
+  const [newJabatan, setNewJabatan] = useState("");
+  const [newNama, setNewNama] = useState("");
+
+  const saveApprovers = (next: ApproverEntry[]) => {
+    setApprovers(next);
+    localData.saveApprovers(next);
+  };
+  const handleAddApprover = () => {
+    if (!newJabatan.trim()) { toast.error("Jabatan wajib diisi"); return; }
+    const id = Date.now().toString();
+    saveApprovers([...approvers, { id, jabatan: newJabatan.trim(), nama: newNama.trim() }]);
+    setNewJabatan(""); setNewNama("");
+    toast.success("Approver ditambahkan");
+  };
+  const handleUpdateApprover = (id: string, field: "jabatan" | "nama", val: string) => {
+    saveApprovers(approvers.map((a) => a.id === id ? { ...a, [field]: val } : a));
+  };
+  const handleDeleteApprover = (id: string) => {
+    saveApprovers(approvers.filter((a) => a.id !== id));
+    toast.success("Approver dihapus");
+  };
+  const handleMoveApprover = (id: string, dir: -1 | 1) => {
+    const idx = approvers.findIndex((a) => a.id === id);
+    if (idx < 0) return;
+    const next = [...approvers];
+    const swap = idx + dir;
+    if (swap < 0 || swap >= next.length) return;
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    saveApprovers(next);
+  };
 
   const handleAddUser = () => {
     if (!newName.trim() || !newEmail.trim()) { toast.error("Nama dan email wajib diisi"); return; }
@@ -106,10 +140,11 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
           {[
-            { key: "users",  label: "Manajemen User", icon: Users },
-            { key: "health", label: "Parser Health",  icon: Activity },
+            { key: "users",    label: "Manajemen User", icon: Users },
+            { key: "health",   label: "Parser Health",  icon: Activity },
+            { key: "approval", label: "Page Approval",  icon: UserCheck },
           ].map(({ key, label, icon: Icon }) => (
-            <button key={key} onClick={() => setActiveTab(key as "users" | "health")}
+            <button key={key} onClick={() => setActiveTab(key as "users" | "health" | "approval")}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
                 activeTab === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
@@ -293,6 +328,127 @@ export default function AdminPage() {
             </DataCard>
           </div>
         )}
+        {/* ── AD3: Page Approval ── */}
+        {activeTab === "approval" && (
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-700">Konfigurasi Approver</p>
+                <p className="text-xs text-slate-400 mt-0.5">Daftar pejabat yang menandatangani halaman Persetujuan Kredit. Urutan menentukan posisi kolom tanda tangan.</p>
+              </div>
+            </div>
+
+            {/* Add row */}
+            <DataCard accent>
+              <p className="text-sm font-semibold text-slate-700 mb-3">Tambah Approver</p>
+              <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Jabatan</label>
+                  <input
+                    value={newJabatan}
+                    onChange={(e) => setNewJabatan(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddApprover()}
+                    placeholder="e.g. Risk Analyst, COO, CEO"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-teal-400 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Nama</label>
+                  <input
+                    value={newNama}
+                    onChange={(e) => setNewNama(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddApprover()}
+                    placeholder="Nama pejabat (opsional)"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-teal-400 transition-all"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleAddApprover}
+                    className="flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600 transition-colors shadow-sm w-full sm:w-auto justify-center"
+                  >
+                    <Plus className="h-4 w-4" /> Tambah
+                  </button>
+                </div>
+              </div>
+            </DataCard>
+
+            {/* Approvers table */}
+            <DataCard padding="flush">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400 w-8"></th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">Urutan</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">Jabatan</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">Nama Default</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400 w-20"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {approvers.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-xs text-slate-400">Belum ada approver. Tambahkan di atas.</td>
+                    </tr>
+                  )}
+                  {approvers.map((a, idx) => (
+                    <tr key={a.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors">
+                      <td className="px-3 py-2.5">
+                        <GripVertical className="h-4 w-4 text-slate-300" />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleMoveApprover(a.id, -1)}
+                            disabled={idx === 0}
+                            className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-[10px] font-bold"
+                          >▲</button>
+                          <span className="w-5 text-center text-xs text-slate-500 font-medium">{idx + 1}</span>
+                          <button
+                            onClick={() => handleMoveApprover(a.id, 1)}
+                            disabled={idx === approvers.length - 1}
+                            className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-[10px] font-bold"
+                          >▼</button>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          value={a.jabatan}
+                          onChange={(e) => handleUpdateApprover(a.id, "jabatan", e.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-semibold text-slate-700 outline-none hover:border-slate-200 focus:border-teal-400 focus:bg-white transition-all"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          value={a.nama}
+                          onChange={(e) => handleUpdateApprover(a.id, "nama", e.target.value)}
+                          placeholder="Nama pejabat"
+                          className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm text-slate-600 outline-none hover:border-slate-200 focus:border-teal-400 focus:bg-white transition-all placeholder:text-slate-300"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <button
+                          onClick={() => handleDeleteApprover(a.id)}
+                          className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:border-red-300 hover:text-red-500 transition-all"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DataCard>
+
+            <DataCard padding="compact">
+              <p className="text-xs font-semibold text-slate-600">Catatan</p>
+              <p className="text-xs text-slate-400 mt-1 leading-5">
+                Konfigurasi ini berlaku global untuk semua perusahaan. Nama approver dipakai sebagai default pada blok tanda tangan di halaman Ringkasan Kredit. Tanggal tanda tangan diisi per-perusahaan.
+              </p>
+            </DataCard>
+          </div>
+        )}
+
       </div>
     </AppShell>
   );

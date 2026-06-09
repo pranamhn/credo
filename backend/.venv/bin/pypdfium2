@@ -1,4 +1,4 @@
-#!/Users/pranamahendra/Github/OCR-Project/backend/.venv/bin/python3.12
+#!/Users/pranamahendra/Github/credo/backend/.venv/bin/python3.12
 import sys
 from pypdfium2_cli.__main__ import cli_main
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-#!/Users/pranamahendra/Github/OCR-Project/backend/.venv/bin/python3.12
+#!/Users/pranamahendra/Github/credo/backend/.venv/bin/python3.12
 import sys
 from pip._internal.cli.main import main
 if __name__ == '__main__':

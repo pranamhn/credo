@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -21,17 +21,17 @@ const SECTIONS: Section[] = [
   {
     title: "Dashboard",
     items: [
-      { label: "Home",      icon: Home,      href: "/"          },
+      { label: "Home", icon: Home, href: "/" },
       { label: "Analytics", icon: BarChart3, href: "/analytics" },
     ],
   },
   {
     title: "Operation",
     items: [
-      { label: "Companies",   icon: Building2,  href: "/companies"  },
-      { label: "Documents",   icon: FileText,   href: "/statements" },
+      { label: "Companies", icon: Building2, href: "/companies" },
+      { label: "Documents", icon: FileText, href: "/statements" },
       { label: "iDeb Parser", icon: Lock, href: "/idebt-parser" },
-      { label: "Fasilitas",   icon: CreditCard, href: "/loans"      },
+      { label: "Fasilitas", icon: CreditCard, href: "/loans" },
     ],
   },
   {
@@ -52,13 +52,14 @@ function isChildActive(children: SubItem[], path: string) {
   return children.some((c) => path === c.href || path.startsWith(c.href + "/"));
 }
 
-function NavLeaf({ item, path }: { item: NavItem & { href: string }; path: string }) {
+function NavLeaf({ item, path, onNavigate }: { item: NavItem & { href: string }; path: string; onNavigate?: () => void }) {
   const active = item.href === "/"
     ? path === "/"
     : path === item.href || path.startsWith(item.href + "/");
   return (
     <Link
       href={item.href}
+      onClick={onNavigate}
       className={cn(
         "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
         active
@@ -72,9 +73,12 @@ function NavLeaf({ item, path }: { item: NavItem & { href: string }; path: strin
   );
 }
 
-function NavAccordion({ item, path }: { item: NavItem & { children: SubItem[] }; path: string }) {
+function NavAccordion({ item, path, onNavigate }: { item: NavItem & { children: SubItem[] }; path: string; onNavigate?: () => void }) {
   const defaultOpen = isChildActive(item.children, path);
   const [open, setOpen] = useState(defaultOpen);
+
+  // R2 — Sync accordion open state when path changes
+  useEffect(() => { if (defaultOpen) setOpen(true); }, [defaultOpen]);
 
   return (
     <div>
@@ -100,6 +104,7 @@ function NavAccordion({ item, path }: { item: NavItem & { children: SubItem[] };
               <Link
                 key={child.href}
                 href={child.href}
+                onClick={onNavigate}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] transition-colors",
                   childActive
@@ -118,7 +123,7 @@ function NavAccordion({ item, path }: { item: NavItem & { children: SubItem[] };
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   return (
     <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto bg-white border-r border-gray-200 lg:flex sticky top-14 h-[calc(100vh-3.5rem)]">
@@ -132,9 +137,9 @@ export function Sidebar() {
             <div className="space-y-0.5">
               {section.items.map((item) =>
                 item.children ? (
-                  <NavAccordion key={item.label} item={item as NavItem & { children: SubItem[] }} path={path} />
+                  <NavAccordion key={item.label} item={item as NavItem & { children: SubItem[] }} path={path} onNavigate={onNavigate} />
                 ) : (
-                  <NavLeaf key={item.href} item={item as NavItem & { href: string }} path={path} />
+                  <NavLeaf key={item.href} item={item as NavItem & { href: string }} path={path} onNavigate={onNavigate} />
                 )
               )}
             </div>

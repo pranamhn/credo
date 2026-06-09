@@ -1,14 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { DropZone } from "@/components/upload/DropZone";
 import { PageHeader, DataCard, SectionLabel } from "@/components/ui-kit";
 import {
   BadgeCheck, BookOpen, FileSpreadsheet, FileStack, FileText,
-  Gauge, Scale, ScanLine, TrendingUp, type LucideIcon,
+  Gauge, Scale, ScanLine, TrendingUp, Building2, ArrowRight, ScrollText, FileCheck, type LucideIcon,
 } from "lucide-react";
-import { DocumentType } from "@/lib/api";
+import { DocumentType, companiesApi, Statement, CompanySummary } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 type DocOption = {
   key: DocumentType;
@@ -21,44 +22,68 @@ type DocOption = {
 
 const DOC_TYPES: DocOption[] = [
   {
-    key:      "bank_statement",
-    label:    "Bank Statement",
-    sub:      "Akan diparse transaksinya",
-    icon:     FileText,
-    iconBg:   "bg-teal-50",
+    key: "bank_statement",
+    label: "Bank Statement",
+    sub: "Akan diparse transaksinya",
+    icon: FileText,
+    iconBg: "bg-teal-50",
     iconText: "text-teal-700",
   },
   {
-    key:      "profit_loss",
-    label:    "Profit & Loss",
-    sub:      "Disimpan sebagai dokumen",
-    icon:     TrendingUp,
-    iconBg:   "bg-emerald-50",
+    key: "profit_loss",
+    label: "Profit & Loss",
+    sub: "Disimpan sebagai dokumen",
+    icon: TrendingUp,
+    iconBg: "bg-emerald-50",
     iconText: "text-emerald-600",
   },
   {
-    key:      "cash_flow",
-    label:    "Cash Flow",
-    sub:      "Disimpan sebagai dokumen",
-    icon:     Scale,
-    iconBg:   "bg-amber-50",
+    key: "cash_flow",
+    label: "Cash Flow",
+    sub: "Disimpan sebagai dokumen",
+    icon: Scale,
+    iconBg: "bg-amber-50",
     iconText: "text-amber-600",
   },
   {
-    key:      "balance_sheet",
-    label:    "Balance Sheet",
-    sub:      "Disimpan sebagai dokumen",
-    icon:     FileSpreadsheet,
-    iconBg:   "bg-indigo-50",
+    key: "balance_sheet",
+    label: "Balance Sheet",
+    sub: "Disimpan sebagai dokumen",
+    icon: FileSpreadsheet,
+    iconBg: "bg-indigo-50",
     iconText: "text-indigo-600",
   },
   {
-    key:      "other",
-    label:    "Dokumen Lain",
-    sub:      "Disimpan sebagai dokumen",
-    icon:     BookOpen,
-    iconBg:   "bg-slate-100",
+    key: "other",
+    label: "Dokumen Lain",
+    sub: "Disimpan sebagai dokumen",
+    icon: BookOpen,
+    iconBg: "bg-slate-100",
     iconText: "text-slate-500",
+  },
+  {
+    key: "nib",
+    label: "Dokumen NIB",
+    sub: "Disimpan sebagai dokumen",
+    icon: ScrollText,
+    iconBg: "bg-sky-50",
+    iconText: "text-sky-600",
+  },
+  {
+    key: "ahu",
+    label: "Dokumen AHU",
+    sub: "Disimpan sebagai dokumen",
+    icon: Building2,
+    iconBg: "bg-violet-50",
+    iconText: "text-violet-600",
+  },
+  {
+    key: "akta",
+    label: "Akta Pendirian / Perubahan",
+    sub: "Disimpan sebagai dokumen",
+    icon: FileCheck,
+    iconBg: "bg-rose-50",
+    iconText: "text-rose-600",
   },
 ];
 
@@ -66,44 +91,90 @@ type GuideItem = { icon: LucideIcon; title: string; desc: string };
 
 const GUIDES: Record<DocumentType, GuideItem[]> = {
   bank_statement: [
-    { icon: FileStack, title: "Upload file",     desc: "PDF, CSV, XLSX bisa diproses bersamaan." },
-    { icon: Gauge,     title: "Pantau progres",  desc: "Halaman, row, dan ETA tampil real-time." },
-    { icon: BadgeCheck,title: "Review hasil",    desc: "Buka statement untuk transaksi, red flag, export." },
+    { icon: FileStack, title: "Upload file", desc: "PDF, CSV, XLSX bisa diproses bersamaan." },
+    { icon: Gauge, title: "Pantau progres", desc: "Halaman, row, dan ETA tampil real-time." },
+    { icon: BadgeCheck, title: "Review hasil", desc: "Buka statement untuk transaksi, red flag, export." },
   ],
   profit_loss: [
-    { icon: TrendingUp, title: "Upload P&L",    desc: "Laporan laba rugi dalam format PDF/Excel." },
-    { icon: FileStack,  title: "Multi-file",    desc: "Upload beberapa periode sekaligus." },
-    { icon: BadgeCheck, title: "Tersimpan",     desc: "Dokumen bisa diakses di halaman perusahaan." },
+    { icon: TrendingUp, title: "Upload P&L", desc: "Laporan laba rugi dalam format PDF/Excel." },
+    { icon: FileStack, title: "Multi-file", desc: "Upload beberapa periode sekaligus." },
+    { icon: BadgeCheck, title: "Tersimpan", desc: "Dokumen bisa diakses di halaman perusahaan." },
   ],
   cash_flow: [
-    { icon: Scale,     title: "Upload Cash Flow", desc: "Laporan arus kas dalam format PDF/Excel." },
-    { icon: FileStack, title: "Multi-file",       desc: "Upload beberapa periode sekaligus." },
-    { icon: BadgeCheck,title: "Tersimpan",        desc: "Dokumen bisa diakses di halaman perusahaan." },
+    { icon: Scale, title: "Upload Cash Flow", desc: "Laporan arus kas dalam format PDF/Excel." },
+    { icon: FileStack, title: "Multi-file", desc: "Upload beberapa periode sekaligus." },
+    { icon: BadgeCheck, title: "Tersimpan", desc: "Dokumen bisa diakses di halaman perusahaan." },
   ],
   balance_sheet: [
     { icon: FileSpreadsheet, title: "Upload Balance Sheet", desc: "Neraca dalam format PDF/Excel." },
-    { icon: FileStack,       title: "Multi-file",           desc: "Upload beberapa periode sekaligus." },
-    { icon: BadgeCheck,      title: "Tersimpan",            desc: "Dokumen bisa diakses di halaman perusahaan." },
+    { icon: FileStack, title: "Multi-file", desc: "Upload beberapa periode sekaligus." },
+    { icon: BadgeCheck, title: "Tersimpan", desc: "Dokumen bisa diakses di halaman perusahaan." },
   ],
   other: [
-    { icon: BookOpen,  title: "Upload Dokumen", desc: "SKU, SIUP, akta, atau dokumen pendukung lainnya." },
-    { icon: FileStack, title: "Multi-file",     desc: "Upload banyak file sekaligus." },
-    { icon: BadgeCheck,title: "Tersimpan",      desc: "Dokumen bisa diakses di halaman perusahaan." },
+    { icon: BookOpen, title: "Upload Dokumen", desc: "SKU, SIUP, akta, atau dokumen pendukung lainnya." },
+    { icon: FileStack, title: "Multi-file", desc: "Upload banyak file sekaligus." },
+    { icon: BadgeCheck, title: "Tersimpan", desc: "Dokumen bisa diakses di halaman perusahaan." },
+  ],
+  nib: [
+    { icon: ScrollText, title: "Upload NIB", desc: "Nomor Induk Berusaha atau dokumen legalitas usaha." },
+    { icon: FileStack, title: "Multi-file", desc: "Upload banyak file sekaligus." },
+    { icon: BadgeCheck, title: "Tersimpan", desc: "Dokumen bisa diakses di halaman perusahaan." },
+  ],
+  ahu: [
+    { icon: Building2, title: "Upload AHU", desc: "Dokumen legalitas badan hukum dari Kemenkumham." },
+    { icon: FileStack, title: "Multi-file", desc: "Upload banyak file sekaligus." },
+    { icon: BadgeCheck, title: "Tersimpan", desc: "Dokumen bisa diakses di halaman perusahaan." },
+  ],
+  akta: [
+    { icon: FileCheck, title: "Upload Akta", desc: "Akta pendirian atau perubahan terakhir perusahaan." },
+    { icon: FileStack, title: "Multi-file", desc: "Upload banyak file sekaligus." },
+    { icon: BadgeCheck, title: "Tersimpan", desc: "Dokumen bisa diakses di halaman perusahaan." },
   ],
 };
 
 const INFOBANNER: Record<DocumentType, string> = {
   bank_statement: "Pilih banyak file sekaligus — sistem identifikasi bank dan mulai parsing otomatis.",
-  profit_loss:    "Laporan P&L akan disimpan sebagai dokumen pendukung perusahaan.",
-  cash_flow:      "Laporan Cash Flow akan disimpan sebagai dokumen pendukung perusahaan.",
-  balance_sheet:  "Balance Sheet akan disimpan sebagai dokumen pendukung perusahaan.",
-  other:          "Dokumen akan disimpan dan bisa diakses melalui halaman perusahaan.",
+  profit_loss: "Laporan P&L akan disimpan sebagai dokumen pendukung perusahaan.",
+  cash_flow: "Laporan Cash Flow akan disimpan sebagai dokumen pendukung perusahaan.",
+  balance_sheet: "Balance Sheet akan disimpan sebagai dokumen pendukung perusahaan.",
+  other: "Dokumen akan disimpan dan bisa diakses melalui halaman perusahaan.",
+  nib: "Upload NIB untuk kelengkapan data legalitas perusahaan.",
+  ahu: "Upload dokumen AHU sebagai bukti badan hukum perusahaan.",
+  akta: "Upload akta pendirian atau perubahan terakhir perusahaan.",
 };
 
 export default function UploadPage() {
   const [docType, setDocType] = useState<DocumentType>("bank_statement");
   const active = DOC_TYPES.find((d) => d.key === docType)!;
   const guide = GUIDES[docType];
+
+  // UP1 — auto-detect perusahaan dari account holder
+  const [companies, setCompanies] = useState<CompanySummary[]>([]);
+  const [suggestedCompany, setSuggestedCompany] = useState<{ company: CompanySummary; statement: Statement } | null>(null);
+
+  // UP3 — Upload history
+  const [uploadHistory, setUploadHistory] = useState<{ name: string; status: string; time: string }[]>([]);
+
+  useEffect(() => {
+    companiesApi.list().then(({ data }) => setCompanies(data)).catch(() => { });
+  }, []);
+
+  const handleStatementReady = (statement: Statement) => {
+    // UP3 — add to upload history
+    setUploadHistory((prev) => [{ name: statement.original_filename, status: statement.status, time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) }, ...prev].slice(0, 5));
+
+    if (!statement.account_holder || docType !== "bank_statement") return;
+    const holder = statement.account_holder.toLowerCase().trim();
+    const match = companies.find((c) => {
+      const name = c.company.name.toLowerCase();
+      // Match by name similarity — company name contains account holder or vice versa
+      return name.includes(holder) || holder.includes(name) ||
+        name.split(/\s+/).some((w) => w.length > 3 && holder.includes(w));
+    });
+    if (match) {
+      setSuggestedCompany({ company: match, statement });
+    }
+  };
 
   return (
     <AppShell>
@@ -119,6 +190,39 @@ export default function UploadPage() {
           <ScanLine className="h-4 w-4 shrink-0" />
           <span>{INFOBANNER[docType]}</span>
         </div>
+
+        {/* UP1 — Auto-detect suggestion */}
+        {suggestedCompany && (
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 ring-1 ring-emerald-200">
+                <Building2 className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-emerald-800">
+                  Perusahaan terdeteksi: <span className="font-bold">{suggestedCompany.company.company.name}</span>
+                </p>
+                <p className="text-xs text-emerald-600 mt-0.5 truncate">
+                  Account holder "{suggestedCompany.statement.account_holder}" cocok dengan perusahaan yang sudah terdaftar.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href={`/companies/${suggestedCompany.company.company.id}`}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                Buka Profil <ArrowRight className="h-3 w-3" />
+              </Link>
+              <button
+                onClick={() => setSuggestedCompany(null)}
+                className="text-xs text-emerald-600 hover:text-emerald-700 underline underline-offset-2"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[220px_1fr_260px]">
           {/* Left: Document type selector */}
@@ -158,11 +262,26 @@ export default function UploadPage() {
           {/* Center: Drop zone for selected type */}
           <div className="min-w-0">
             <SectionLabel className="mb-2">{active.label}</SectionLabel>
-            <DropZone documentType={docType} key={docType} />
+            <DropZone documentType={docType} key={docType} onStatementReady={handleStatementReady} />
           </div>
 
           {/* Right: Guide for selected type */}
           <aside className="space-y-3">
+            {/* UP3 — Upload history */}
+            {uploadHistory.length > 0 && (
+              <DataCard padding="compact">
+                <SectionLabel className="mb-3">Upload Terakhir</SectionLabel>
+                <div className="space-y-2">
+                  {uploadHistory.map((h, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${h.status === "done" ? "bg-emerald-400" : h.status === "failed" ? "bg-red-400" : "bg-amber-400"}`} />
+                      <span className="text-slate-600 truncate flex-1">{h.name.slice(0, 24)}</span>
+                      <span className="text-[10px] text-slate-400 shrink-0">{h.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </DataCard>
+            )}
             <DataCard padding="compact">
               <SectionLabel className="mb-4">Panduan</SectionLabel>
               <div className="space-y-4">
