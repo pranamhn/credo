@@ -13,6 +13,7 @@ import { formatIDR, formatDate, formatPct } from "@/lib/utils";
 import {
   ArrowDownCircle, ArrowUpCircle, Scale, TrendingUp,
   Download, RefreshCw, CheckCircle2, AlertTriangle, Filter, FileDown, Pencil, X, Save, Check, MoreHorizontal,
+  Building2, MapPin, Phone, Mail, ScrollText, Users,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -234,6 +235,200 @@ export default function StatementDetailPage() {
       </div>
     </AppShell>
   );
+
+  // ── Legal document views (NIB / AHU) ──────────────────────────────────────
+  if (stmt.document_type === "nib") {
+    const nib = (stmt.parse_meta as Record<string, unknown>)?.nib as Record<string, unknown> | undefined;
+    const kbli = (nib?.kbli_entries as Record<string, unknown>[]) ?? [];
+    return (
+      <AppShell>
+        <div className="space-y-5">
+          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-card p-6 shadow-sm">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400 to-transparent" />
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 ring-1 ring-sky-200 text-sky-600">
+                <ScrollText className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Nomor Induk Berusaha</p>
+                <h1 className="text-xl font-bold text-slate-900">{String(nib?.nib_number ?? stmt.original_filename)}</h1>
+                <p className="mt-1 text-sm text-slate-500">{stmt.account_holder}</p>
+              </div>
+              <StatusBadge status={stmt.status} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Info Pelaku Usaha</p>
+              {!!nib?.alamat_kantor && (
+                <div className="flex gap-2 text-xs text-slate-600">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5 text-slate-400" />
+                  <span>{String(nib.alamat_kantor)}</span>
+                </div>
+              )}
+              {!!nib?.telepon && (
+                <div className="flex gap-2 text-xs text-slate-600">
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <span>{String(nib.telepon)}</span>
+                </div>
+              )}
+              {!!nib?.email && (
+                <div className="flex gap-2 text-xs text-slate-600">
+                  <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <span>{String(nib.email)}</span>
+                </div>
+              )}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Keterangan</p>
+              {[
+                ["Status Penanaman Modal", nib?.status_penanaman_modal],
+                ["Tanggal Terbit", nib?.tanggal_terbit],
+                ["Tanggal Perubahan", nib?.tanggal_perubahan],
+                ["Dicetak", nib?.tanggal_cetak],
+              ].filter(([, v]) => v).map(([label, value]) => (
+                <div key={String(label)} className="flex justify-between text-xs">
+                  <span className="text-slate-400">{String(label)}</span>
+                  <span className="font-medium text-slate-700">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {kbli.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">KBLI — {kbli.length} Bidang Usaha</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="border-b border-slate-100">
+                    <tr>
+                      {["No", "Kode", "Judul KBLI", "Tingkat Risiko", "Status"].map((h) => (
+                        <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kbli.map((k, i) => {
+                      const risiko = String(k.tingkat_risiko ?? "");
+                      const risikoColor = risiko === "Tinggi" ? "text-red-600 bg-red-50" : risiko === "Menengah Tinggi" ? "text-amber-600 bg-amber-50" : "text-emerald-600 bg-emerald-50";
+                      return (
+                        <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="px-4 py-2.5 text-slate-400">{String(k.no ?? i + 1)}</td>
+                          <td className="px-4 py-2.5 font-mono font-semibold text-violet-700">{String(k.kode ?? "")}</td>
+                          <td className="px-4 py-2.5 text-slate-700 max-w-xs">{String(k.judul ?? "")}</td>
+                          <td className="px-4 py-2.5">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${risikoColor}`}>{risiko}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-500">{(k.status_perizinan as string[] | undefined)?.[0] ?? ""}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (stmt.document_type === "ahu") {
+    const ahu = (stmt.parse_meta as Record<string, unknown>)?.ahu as Record<string, unknown> | undefined;
+    const pemegang = (ahu?.pemegang_saham as Record<string, unknown>[]) ?? [];
+    const formatRp = (v: unknown) => v == null ? "—" : `Rp ${Number(v).toLocaleString("id-ID")}`;
+    return (
+      <AppShell>
+        <div className="space-y-5">
+          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-card p-6 shadow-sm">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent" />
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 ring-1 ring-violet-200 text-violet-600">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">SK Kemenkumham AHU</p>
+                <h1 className="text-xl font-bold text-slate-900">{String(ahu?.nomor_sk ?? stmt.original_filename)}</h1>
+                <p className="mt-1 text-sm text-slate-500">{stmt.account_holder}</p>
+              </div>
+              <StatusBadge status={stmt.status} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Detail Perseroan</p>
+              {[
+                ["Nama Perusahaan", ahu?.nama_perusahaan],
+                ["Domisili", ahu?.domisili],
+                ["Jenis Perseroan", ahu?.jenis_perseroan],
+                ["Nomor Akta", ahu?.nomor_akta],
+                ["Tanggal Akta", ahu?.tanggal_akta],
+                ["Notaris", ahu?.notaris],
+                ["Kota Notaris", ahu?.kota_notaris],
+              ].filter(([, v]) => v).map(([label, value]) => (
+                <div key={String(label)} className="flex justify-between text-xs gap-4">
+                  <span className="text-slate-400 shrink-0">{String(label)}</span>
+                  <span className="font-medium text-slate-700 text-right">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Modal Perseroan</p>
+              {[
+                ["Modal Dasar", formatRp(ahu?.modal_dasar)],
+                ["Modal Ditempatkan", formatRp(ahu?.modal_ditempatkan)],
+                ["Modal Disetor", formatRp(ahu?.modal_disetor)],
+                ["Tanggal Penetapan", ahu?.tanggal_penetapan],
+                ["Nomor Daftar Perseroan", ahu?.nomor_daftar_perseroan],
+                ["Nomor Pendaftaran", ahu?.nomor_pendaftaran],
+              ].filter(([, v]) => v && v !== "—").map(([label, value]) => (
+                <div key={String(label)} className="flex justify-between text-xs gap-4">
+                  <span className="text-slate-400 shrink-0">{String(label)}</span>
+                  <span className="font-medium text-slate-700 text-right">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {pemegang.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <Users className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Direksi & Pemegang Saham</p>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="border-b border-slate-100">
+                  <tr>
+                    {["Nama", "Jabatan", "Lembar Saham", "Nilai"].map((h) => (
+                      <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pemegang.map((p, i) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-semibold text-slate-800">{String(p.nama ?? "")}</td>
+                      <td className="px-4 py-2.5">
+                        <span className="inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-200">
+                          {String(p.jabatan ?? "")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-600">{p.jumlah_lembar != null ? Number(p.jumlah_lembar).toLocaleString("id-ID") : "—"}</td>
+                      <td className="px-4 py-2.5 text-slate-600">{formatRp(p.total_nilai)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </AppShell>
+    );
+  }
 
   const isParsing = stmt.status === "queued" || stmt.status === "parsing";
 

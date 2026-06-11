@@ -161,6 +161,8 @@ export const statementsApi = {
   reparse: (id: string) => api.post<Statement>(`/statements/${id}/reparse`),
   delete: (id: string) => api.delete(`/statements/${id}`),
   reconcile: (id: string) => api.patch<Statement>(`/statements/${id}`, { is_reconciled: true }),
+  assignCompany: (id: string, companyId: string | null) =>
+    api.patch<Statement>(`/statements/${id}/assign`, { company_id: companyId }),
   exportUrl: (id: string, format: "xlsx" | "json") =>
     `${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/statements/${id}/export?format=${format}`,
 };
@@ -292,6 +294,8 @@ export const cbiApi = {
   list: (companyId?: string) =>
     api.get<CbiReport[]>("/cbi/", { params: companyId ? { company_id: companyId } : {} }),
   get: (id: string) => api.get<CbiReport>(`/cbi/${id}`),
+  assignCompany: (id: string, companyId: string | null) =>
+    api.patch<CbiReport>(`/cbi/${id}/company`, { company_id: companyId }),
   delete: (id: string) => api.delete(`/cbi/${id}`),
 };
 
@@ -308,5 +312,7 @@ export const slikApi = {
   list: (companyId?: string) =>
     api.get<SlikReport[]>("/slik/", { params: companyId ? { company_id: companyId } : {} }),
   get: (id: string) => api.get<SlikReport>(`/slik/${id}`),
+  assignCompany: (id: string, companyId: string | null) =>
+    api.patch<SlikReport>(`/slik/${id}/company`, { company_id: companyId }),
   delete: (id: string) => api.delete(`/slik/${id}`),
 };

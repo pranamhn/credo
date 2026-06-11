@@ -352,18 +352,18 @@ export function DropZone({
                   {entry.error && <p className="text-[11px] text-red-400 mt-1">{entry.error}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {statusIcon[entry.status]}
-                  {stmt && (
+                  {entry.status !== "done" && statusIcon[entry.status]}
+                  {stmt && entry.status !== "done" && (
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${stmtStatusCls[stmt.status]}`}>
                       {stmt.status === "done" ? "Done" : stmt.status === "needs_review" ? "Review" : stmt.status === "parsing" ? "Parsing" : stmt.status === "failed" ? "Failed" : "Queued"}
                     </span>
                   )}
-                  {stmt && (
+                  {stmt && entry.status === "done" && (
                     <Link
-                      href={`/statements/${stmt.id}`}
-                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors shadow-sm"
+                      href={`/documents/${stmt.id}`}
+                      className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
                     >
-                      Lihat
+                      Buka <CheckCircle2 className="w-3 h-3" />
                     </Link>
                   )}
                   <button
@@ -376,6 +376,29 @@ export function DropZone({
               </div>
             );
           })}
+
+          {/* Summary footer when any file done */}
+          {entries.some((e) => e.status === "done") && (
+            <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-emerald-700">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span className="font-semibold">
+                  {entries.filter((e) => e.status === "done").length} file selesai
+                </span>
+                {entries.some((e) => e.status === "error") && (
+                  <span className="ml-1 text-red-500">
+                    · {entries.filter((e) => e.status === "error").length} gagal
+                  </span>
+                )}
+              </div>
+              <Link
+                href="/documents"
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                Lihat Semua Statement
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </div>

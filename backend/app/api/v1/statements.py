@@ -40,6 +40,38 @@ def _period_month_to_date(period: str, end_of_month: bool = False) -> date | Non
         return None
 
 
+_BULAN_ID = {
+    "januari": 1, "februari": 2, "maret": 3, "april": 4,
+    "mei": 5, "juni": 6, "juli": 7, "agustus": 8,
+    "september": 9, "oktober": 10, "november": 11, "desember": 12,
+}
+
+
+def _parse_tanggal_indo(text: str) -> date | None:
+    """Parse Indonesian date strings like '27 Juni 2023' or '27-06-2023'."""
+    if not text:
+        return None
+    import re
+    numeric = re.search(r"(\d{1,2})[-/](\d{1,2})[-/](\d{4})", text)
+    if numeric:
+        try:
+            return date(int(numeric.group(3)), int(numeric.group(2)), int(numeric.group(1)))
+        except Exception:
+            return None
+    m = re.search(r"(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})", text)
+    if not m:
+        return None
+    try:
+        day = int(m.group(1))
+        month = _BULAN_ID.get(m.group(2).lower())
+        year = int(m.group(3))
+        if month:
+            return date(year, month, day)
+    except Exception:
+        pass
+    return None
+
+
 def _count_pdf_pages(file_path: str) -> int | None:
     try:
         import pdfplumber
@@ -272,6 +304,62 @@ def _parse_financial_document(stmt: Statement, file_path: str) -> None:
             }
             parsed_ok = bool(report.line_items)
 
+        elif stmt.document_type == "nib":
+            from app.parsers.nib_parser import parse_nib_pdf
+
+            report = parse_nib_pdf(file_path)
+            report_dict = asdict(report)
+            meta_update = {
+                "parser": "nib_parser",
+                "nib": report_dict,
+            }
+            parsed_ok = bool(report.nib_number)
+            # Populate statement fields for display consistency
+            if report.nama_pelaku_usaha:
+                stmt.account_holder = report.nama_pelaku_usaha
+            if report.tanggal_terbit:
+                _d = _parse_tanggal_indo(report.tanggal_terbit)
+                if _d:
+                    stmt.period_start = _d
+            if report.tanggal_perubahan or report.tanggal_cetak:
+                _d = _parse_tanggal_indo(report.tanggal_perubahan or report.tanggal_cetak)
+                if _d:
+                    stmt.period_end = _d
+
+        elif stmt.document_type == "ahu":
+            from app.parsers.ahu_parser import parse_ahu_pdf
+
+            report = parse_ahu_pdf(file_path)
+            report_dict = asdict(report)
+            meta_update = {
+                "parser": "ahu_parser",
+                "ahu": report_dict,
+            }
+            parsed_ok = bool(report.nomor_sk)
+            if report.nama_perusahaan:
+                stmt.account_holder = report.nama_perusahaan
+            if report.tanggal_penetapan:
+                _d = _parse_tanggal_indo(report.tanggal_penetapan)
+                if _d:
+                    stmt.period_start = _d
+
+        elif stmt.document_type == "akta":
+            from app.parsers.akta_parser import parse_akta_pdf
+
+            report = parse_akta_pdf(file_path)
+            report_dict = asdict(report)
+            meta_update = {
+                "parser": "akta_parser",
+                "akta": report_dict,
+            }
+            parsed_ok = bool(report.nomor_akta or report.nama_perusahaan)
+            if report.nama_perusahaan:
+                stmt.account_holder = report.nama_perusahaan
+            if report.tanggal_akta:
+                _d = _parse_tanggal_indo(report.tanggal_akta)
+                if _d:
+                    stmt.period_start = _d
+
         else:
             stmt.status = StatementStatus.done
             stmt.parsed_at = datetime.utcnow()
@@ -330,7 +418,7 @@ async def upload_statement(
         parse_meta={"page_count": page_count} if page_count is not None else None,
         status=StatementStatus.queued if document_type == "bank_statement" else StatementStatus.done,
     )
-    if document_type in {"profit_loss", "balance_sheet", "cash_flow"}:
+    if document_type in {"profit_loss", "balance_sheet", "cash_flow", "nib", "ahu", "akta"}:
         _parse_financial_document(stmt, local_path)
 
     db.add(stmt)
@@ -410,14 +498,14 @@ async def reparse_statement(
         raise HTTPException(404, "Statement not found")
     if stmt.status in (StatementStatus.queued, StatementStatus.parsing):
         raise HTTPException(409, "Statement sedang diproses")
-    if stmt.document_type not in {"bank_statement", "profit_loss", "balance_sheet", "cash_flow"}:
-        raise HTTPException(400, "Hanya bank statement, Profit & Loss, Balance Sheet, dan Cash Flow yang bisa di-reparse")
+    if stmt.document_type not in {"bank_statement", "profit_loss", "balance_sheet", "cash_flow", "nib", "ahu", "akta"}:
+        raise HTTPException(400, "Hanya bank statement, Profit & Loss, Balance Sheet, Cash Flow, NIB, AHU, dan Akta yang bisa di-reparse")
 
     stmt.status = StatementStatus.queued
     stmt.parse_error = None  # type: ignore[assignment]
     stmt.parsed_at = None  # type: ignore[assignment]
 
-    if stmt.document_type in {"profit_loss", "balance_sheet", "cash_flow"}:
+    if stmt.document_type in {"profit_loss", "balance_sheet", "cash_flow", "nib", "ahu", "akta"}:
         _parse_financial_document(stmt, stmt.storage_key)
         await db.commit()
         await db.refresh(stmt)
@@ -446,6 +534,27 @@ async def list_transactions(
     q = q.order_by(Transaction.row).offset(skip).limit(limit)
     result = await db.execute(q)
     return result.scalars().all()
+
+
+@router.patch("/{statement_id}/assign", response_model=StatementRead)
+async def assign_company(
+    statement_id: uuid.UUID,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = await db.get(Statement, statement_id)
+    if not stmt:
+        raise HTTPException(404, "Statement not found")
+    company_id = body.get("company_id")
+    if company_id:
+        if not await db.get(Company, uuid.UUID(company_id)):
+            raise HTTPException(404, "Company not found")
+        stmt.company_id = uuid.UUID(company_id)
+    else:
+        stmt.company_id = None  # type: ignore[assignment]
+    await db.commit()
+    await db.refresh(stmt)
+    return stmt
 
 
 @router.patch("/{statement_id}/transactions/{row}", response_model=TransactionRead)

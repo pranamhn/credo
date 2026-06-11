@@ -18,7 +18,7 @@ export function DataCard({ accent = false, hoverable = false, padding = "default
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
+        "relative rounded-xl border border-slate-200 bg-white shadow-sm",
         hoverable && "transition-all duration-200 hover:border-violet-300 hover:shadow-md",
         paddingCls,
         className

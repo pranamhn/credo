@@ -18,7 +18,7 @@ interface CommandItem {
 const COMMANDS: CommandItem[] = [
   { id: "home", label: "Home", description: "Dashboard briefing harian", icon: <Command className="h-4 w-4" />, href: "/", shortcut: "H" },
   { id: "companies", label: "Companies", description: "Portofolio perusahaan & dokumen", icon: <Building2 className="h-4 w-4" />, href: "/companies" },
-  { id: "statements", label: "Statements", description: "Library rekening koran", icon: <FileText className="h-4 w-4" />, href: "/statements" },
+  { id: "statements", label: "Statements", description: "Library rekening koran", icon: <FileText className="h-4 w-4" />, href: "/documents" },
   { id: "upload", label: "Upload", description: "Upload dokumen baru", icon: <CloudUpload className="h-4 w-4" />, href: "/upload", shortcut: "U" },
   { id: "loans", label: "Loans", description: "Fasilitas kredit & kolektibilitas", icon: <FileText className="h-4 w-4" />, href: "/loans" },
   { id: "watchlist", label: "Watch List", description: "Early warning signal monitoring", icon: <AlertTriangle className="h-4 w-4" />, href: "/watchlist" },

@@ -11,8 +11,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.company import Company
 from app.models.slik_report import SlikReport
-from app.schemas.slik import SlikReportRead
+from app.schemas.slik import SlikReportCompanyUpdate, SlikReportRead
 
 router = APIRouter(prefix="/slik", tags=["slik"])
 
@@ -91,6 +92,23 @@ async def get_slik(report_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     row = await db.get(SlikReport, report_id)
     if not row:
         raise HTTPException(status_code=404, detail="Report not found")
+    return row
+
+
+@router.patch("/{report_id}/company", response_model=SlikReportRead)
+async def update_slik_company(
+    report_id: uuid.UUID,
+    payload: SlikReportCompanyUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    row = await db.get(SlikReport, report_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if payload.company_id and not await db.get(Company, payload.company_id):
+        raise HTTPException(status_code=404, detail="Company not found")
+    row.company_id = payload.company_id
+    await db.commit()
+    await db.refresh(row)
     return row
 
 

@@ -25,3 +25,7 @@ class CbiReportRead(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class CbiReportCompanyUpdate(BaseModel):
+    company_id: Optional[UUID] = None

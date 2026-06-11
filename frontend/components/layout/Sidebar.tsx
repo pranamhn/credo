@@ -38,7 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Analisis",
     items: [
-      { label: "Bank Statement",  icon: FileText,    href: "/statements" },
+      { label: "Dokumen",          icon: FileText,    href: "/documents" },
       { label: "iDEB Parser",     icon: FileSearch,  href: "/idebt-parser" },
       { label: "Upload Dokumen",  icon: Upload,      href: "/upload" },
     ],

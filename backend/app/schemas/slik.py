@@ -50,3 +50,7 @@ class SlikReportRead(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SlikReportCompanyUpdate(BaseModel):
+    company_id: Optional[UUID] = None

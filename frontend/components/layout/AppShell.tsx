@@ -13,7 +13,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const ROUTE_LABELS: Record<string, string> = {
   companies:      "Portfolio Debitur",
-  statements:     "Bank Statement",
+  documents:      "Dokumen",
   upload:         "Upload Dokumen",
   analytics:      "Insights",
   admin:          "Pengaturan",

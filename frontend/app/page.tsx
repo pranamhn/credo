@@ -259,7 +259,7 @@ export default function HomePage() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">Things To Do Today</p>
               <p className="mt-0.5 text-xs text-slate-500">Pending sebelumnya yang perlu dibereskan dulu</p>
             </div>
-            <Link href="/statements" className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700">
+            <Link href="/documents" className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700">
               Kelola semua <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -296,7 +296,7 @@ export default function HomePage() {
                             </div>
                           </div>
                           <Link
-                            href="/statements"
+                            href="/documents"
                             className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-amber-700"
                           >
                             Lihat sekarang
@@ -328,8 +328,8 @@ export default function HomePage() {
                   todoStatements.map((s) => {
                     const company = companies.find((c) => c.company.id === s.company_id);
                     const href = s.document_type === "bank_statement" && s.status === "needs_review"
-                      ? `/statements/${s.id}`
-                      : "/statements";
+                      ? `/documents/${s.id}`
+                      : "/documents";
                     const isFailed = s.status === "failed";
                     return (
                       <Link
@@ -367,7 +367,7 @@ export default function HomePage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">Aktivitas Terakhir</p>
-            <Link href="/statements" className="text-xs text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1">
+            <Link href="/documents" className="text-xs text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1">
               Lihat semua <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -390,7 +390,7 @@ export default function HomePage() {
                   const company = companies.find((c) => c.company.id === s.company_id);
                   const isBank = s.document_type === "bank_statement";
                   const canOpen = isBank && (s.status === "done" || s.status === "needs_review");
-                  const href = canOpen ? `/statements/${s.id}` : s.company_id ? `/companies/${s.company_id}` : "#";
+                  const href = canOpen ? `/documents/${s.id}` : s.company_id ? `/companies/${s.company_id}` : "#";
                   return (
                     <Link
                       key={s.id}

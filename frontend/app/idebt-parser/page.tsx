@@ -32,6 +32,7 @@ export default function IdebtParserPage() {
   const [selectedCbi, setSelectedCbi] = useState<CbiReport | null>(null);
   const [loadedSlik, setLoadedSlik] = useState(false);
   const [loadedCbi, setLoadedCbi] = useState(false);
+  const [assigningReportId, setAssigningReportId] = useState<string | null>(null);
 
   // Upload modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -83,6 +84,33 @@ export default function IdebtParserPage() {
 
   const reports = parseType === "slik" ? slikReports : cbiReports;
   const loaded = parseType === "slik" ? loadedSlik : loadedCbi;
+  const assignedCount = reports.filter((r) => r.company_id).length;
+  const unassignedCount = reports.length - assignedCount;
+
+  const getCompanyName = (companyId: string | null | undefined) => (
+    companyId ? companies.find((c) => c.company.id === companyId)?.company.name ?? "Company tidak ditemukan" : null
+  );
+
+  const handleAssignCompany = async (reportId: string, companyId: string) => {
+    const nextCompanyId = companyId || null;
+    setAssigningReportId(reportId);
+    try {
+      if (parseType === "slik") {
+        const { data } = await slikApi.assignCompany(reportId, nextCompanyId);
+        setSlikReports((prev) => prev.map((r) => r.id === reportId ? data : r));
+        if (selectedSlik?.id === reportId) setSelectedSlik(data);
+      } else {
+        const { data } = await cbiApi.assignCompany(reportId, nextCompanyId);
+        setCbiReports((prev) => prev.map((r) => r.id === reportId ? data : r));
+        if (selectedCbi?.id === reportId) setSelectedCbi(data);
+      }
+      toast.success(nextCompanyId ? "Laporan iDeb berhasil di-assign" : "Assignment laporan iDeb dihapus");
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Gagal mengubah assignment");
+    } finally {
+      setAssigningReportId(null);
+    }
+  };
 
   return (
     <AppShell>
@@ -166,7 +194,12 @@ export default function IdebtParserPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Report list */}
           <div className="lg:col-span-1 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 px-1 mb-2">Laporan ({reports.length})</p>
+            <div className="px-1 mb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Laporan ({reports.length})</p>
+              <p className="mt-1 text-[11px] text-slate-400">
+                {assignedCount} assigned · {unassignedCount} belum assigned
+              </p>
+            </div>
             {!loaded ? (
               <div className="py-8 text-center text-xs text-slate-400">Memuat...</div>
             ) : reports.length === 0 ? (
@@ -176,19 +209,43 @@ export default function IdebtParserPage() {
                 const isSelected = parseType === "slik" ? selectedSlik?.id === r.id : selectedCbi?.id === r.id;
                 const name = r.parsed_data?.debitur?.nama ?? r.nama_debitur ?? "—";
                 const nomor = r.nomor_laporan || r.id?.slice(0, 8) || "—";
+                const assignedCompanyName = getCompanyName(r.company_id);
                 return (
-                  <button key={r.id} onClick={() => parseType === "slik" ? setSelectedSlik(r) : setSelectedCbi(r)}
-                    className={`w-full text-left rounded-xl border px-4 py-3 transition-colors ${isSelected ? "border-indigo-300 bg-indigo-50" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}>
+                  <div key={r.id}
+                    className={`w-full rounded-xl border px-4 py-3 transition-colors ${isSelected ? "border-indigo-300 bg-indigo-50" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}>
                     <div className="flex items-start gap-2">
-                      <FileText className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-800 truncate">{name}</p>
-                        <p className="text-[11px] text-slate-400 truncate">{nomor}</p>
-                      </div>
-                      <span onClick={(e) => { e.stopPropagation(); parseType === "slik" ? handleDeleteSlik(r.id) : handleDeleteCbi(r.id); }}
-                        className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></span>
+                      <button
+                        type="button"
+                        onClick={() => parseType === "slik" ? setSelectedSlik(r) : setSelectedCbi(r)}
+                        className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                      >
+                        <FileText className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-800 truncate">{name}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{nomor}</p>
+                        </div>
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); parseType === "slik" ? handleDeleteSlik(r.id) : handleDeleteCbi(r.id); }}
+                        className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
-                  </button>
+                    <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                      <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                      <select
+                        value={r.company_id ?? ""}
+                        onChange={(e) => handleAssignCompany(r.id, e.target.value)}
+                        disabled={assigningReportId === r.id}
+                        className="min-w-0 flex-1 bg-transparent text-xs text-slate-700 outline-none disabled:cursor-wait disabled:text-slate-400"
+                      >
+                        <option value="">Assign ke company...</option>
+                        {companies.map((c) => (
+                          <option key={c.company.id} value={c.company.id}>{c.company.name}</option>
+                        ))}
+                      </select>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${assignedCompanyName ? "bg-indigo-50 text-indigo-700" : "bg-amber-50 text-amber-700"}`}>
+                        {assignedCompanyName ? "Assigned" : "Open"}
+                      </span>
+                    </div>
+                  </div>
                 );
               })
             )}

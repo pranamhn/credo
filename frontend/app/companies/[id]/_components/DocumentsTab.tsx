@@ -154,7 +154,7 @@ export function DocumentsTab({
                               {docs.slice(0, 2).map((doc) => (
                                 <div key={doc.id} className="min-w-0">
                                   {doc.document_type === "bank_statement" && (doc.status === "done" || doc.status === "needs_review") ? (
-                                    <Link href={`/statements/${doc.id}`} className="block text-[9px] font-semibold text-violet-800 hover:text-violet-600 truncate leading-tight" title={doc.original_filename}>
+                                    <Link href={`/documents/${doc.id}`} className="block text-[9px] font-semibold text-violet-800 hover:text-violet-600 truncate leading-tight" title={doc.original_filename}>
                                       {doc.original_filename.replace(/\.pdf$/i, "").slice(0, 14)}
                                     </Link>
                                   ) : (
@@ -290,7 +290,7 @@ export function DocumentsTab({
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
                         {doc.document_type === "bank_statement" && (doc.status === "done" || doc.status === "needs_review") && (
-                          <Link href={`/statements/${doc.id}`}
+                          <Link href={`/documents/${doc.id}`}
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:border-violet-200 hover:text-violet-600 transition-all">
                             Analisis
                           </Link>
@@ -307,7 +307,7 @@ export function DocumentsTab({
                         )}
                         {doc.document_type === "other" && (
                           <Link
-                            href={`/statements/${doc.id}`}
+                            href={`/documents/${doc.id}`}
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition-all hover:border-indigo-200 hover:text-indigo-700"
                             title="Lihat dokumen"
                           >

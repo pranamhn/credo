@@ -11,8 +11,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.company import Company
 from app.models.cbi_report import CbiReport
-from app.schemas.cbi import CbiReportRead
+from app.schemas.cbi import CbiReportCompanyUpdate, CbiReportRead
 
 router = APIRouter(prefix="/cbi", tags=["cbi"])
 
@@ -90,6 +91,23 @@ async def get_cbi(report_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     row = await db.get(CbiReport, report_id)
     if not row:
         raise HTTPException(status_code=404, detail="Report not found")
+    return row
+
+
+@router.patch("/{report_id}/company", response_model=CbiReportRead)
+async def update_cbi_company(
+    report_id: uuid.UUID,
+    payload: CbiReportCompanyUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    row = await db.get(CbiReport, report_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if payload.company_id and not await db.get(Company, payload.company_id):
+        raise HTTPException(status_code=404, detail="Company not found")
+    row.company_id = payload.company_id
+    await db.commit()
+    await db.refresh(row)
     return row
 
 

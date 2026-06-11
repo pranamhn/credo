@@ -49,10 +49,12 @@ export function useCompanyLocalState(id: string) {
     toast.success("Profil perusahaan disimpan");
   };
 
+  const _legalDocType: Record<LegalDocKey, import("@/lib/api").DocumentType> = { nib: "nib", ahu: "ahu", akta: "akta" };
+
   const handleLegalDocUpload = async (docKey: LegalDocKey, file: File) => {
     setLegalUploading((prev) => ({ ...prev, [docKey]: true }));
     try {
-      const res = await statementsApi.upload(file, { companyId: id, documentType: "other" });
+      const res = await statementsApi.upload(file, { companyId: id, documentType: _legalDocType[docKey] ?? "other" });
       const ref = { statementId: res.data.id, filename: file.name, uploadedAt: new Date().toISOString() };
       const next = { ...legalDocs, [docKey]: ref };
       setLegalDocs(next);
