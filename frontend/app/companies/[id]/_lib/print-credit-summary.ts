@@ -1,6 +1,6 @@
 // Runs in the browser only (uses window.open, window.location).
 import { toast } from "sonner";
-import type { CompanySummary } from "@/lib/api";
+import type { CompanySummary, SlikReport, CbiReport } from "@/lib/api";
 import type { CreditMemo, CompanyProfile, ScoringAspect, DebtEntry, ApproverEntry } from "@/lib/localData";
 import { formatIDR, formatDate } from "@/lib/utils";
 import { RATING_META, MONTHS_ID } from "./company-detail-constants";
@@ -23,6 +23,9 @@ export interface PrintData {
   dscrCicilanBaru: number;
   creditScore: CreditScoreBreakdown;
   slikDerived: SlikDerivedPrint;
+  slikReports: SlikReport[];
+  cbiReports: CbiReport[];
+  interestExpense: number;
   approvers: ApproverEntry[];
 }
 
@@ -208,15 +211,49 @@ ${section("Faktor Risiko", `
 
 ${section("Kelengkapan Dokumen", `<div class="pill-row">${printData.coverage.map((item) => `<span class="pill ${item.has ? "ok" : "miss"}">${item.has ? "✓" : "○"} ${esc(item.label)}</span>`).join("")}</div>`)}
 
-${printData.slikDerived ? section("II. Insight iDeb / SLIK", (() => {
+${printData.slikDerived ? section("V. Insight iDeb / SLIK", (() => {
     const sd = printData.slikDerived!;
     const kolColor = sd.worstKol === 1 ? "#047857" : sd.worstKol === 2 ? "#b45309" : "#dc2626";
     const kolBg = sd.worstKol === 1 ? "#ecfdf5" : sd.worstKol === 2 ? "#fffbeb" : "#fef2f2";
     const kolBdr = sd.worstKol === 1 ? "#a7f3d0" : sd.worstKol === 2 ? "#fde68a" : "#fecaca";
     const dsrColor = sd.dsr === null ? "#94a3b8" : sd.dsr <= 0.35 ? "#047857" : sd.dsr <= 0.5 ? "#b45309" : "#dc2626";
     const dsrLabel = sd.dsr === null ? "—" : `${(sd.dsr * 100).toFixed(1)}% — ${sd.dsr <= 0.35 ? "Aman" : sd.dsr <= 0.5 ? "Perhatian" : "Tinggi"}`;
+
+    // Per-laporan detail table
+    const showTable = printData.slikReports.length + printData.cbiReports.length > 1
+      || (printData.slikReports.length > 0 && printData.cbiReports.length > 0);
+    let perLaporanHtml = "";
+    if (showTable) {
+      const rows: string[] = [];
+      printData.slikReports.forEach((r) => {
+        const fas = r.parsed_data?.fasilitas ?? [];
+        const wk = fas.reduce((w, f) => {
+          const k = parseInt(f.kualitas.replace(/\D/g, ""), 10);
+          return isNaN(k) ? w : Math.max(w, k);
+        }, 1);
+        const baki = fas.reduce((s, f) => s + (f.baki_debet ?? 0), 0);
+        const wkColor = wk === 1 ? "#047857" : wk === 2 ? "#b45309" : "#dc2626";
+        const wkBg = wk === 1 ? "#ecfdf5" : wk === 2 ? "#fffbeb" : "#fef2f2";
+        rows.push(`<tr><td><span class="pill ok" style="font-size:9px">SLIK</span></td><td>${esc(r.original_filename)}</td><td style="font-size:9px;color:#64748b">${esc(r.tanggal_laporan ?? "—")}</td><td style="text-align:right">${r.jumlah_kreditur ?? fas.length}</td><td style="text-align:right">${r.jumlah_fasilitas ?? fas.length}</td><td style="text-align:right">${idr(baki)}</td><td style="text-align:center"><span style="display:inline-flex;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700;background:${wkBg};color:${wkColor}">${wk}</span></td></tr>`);
+      });
+      printData.cbiReports.forEach((r) => {
+        const fas = r.parsed_data?.fasilitas_aktif ?? [];
+        const wk = fas.reduce((w, f) => {
+          const k = parseInt(f.kolektabilitas.replace(/\D/g, ""), 10);
+          return isNaN(k) ? w : Math.max(w, k);
+        }, 1);
+        const baki = r.parsed_data?.total_baki_debet_aktif
+          ?? fas.reduce((s, f) => s + (f.baki_debet ?? 0), 0);
+        const wkColor = wk === 1 ? "#047857" : wk === 2 ? "#b45309" : "#dc2626";
+        const wkBg = wk === 1 ? "#ecfdf5" : wk === 2 ? "#fffbeb" : "#fef2f2";
+        rows.push(`<tr><td><span class="pill ok" style="font-size:9px">CBI</span></td><td>${esc(r.original_filename)}</td><td style="font-size:9px;color:#64748b">${esc(r.tanggal_laporan ?? "—")}</td><td style="text-align:right">${r.jumlah_kreditur_aktif ?? fas.length}</td><td style="text-align:right">${r.jumlah_fasilitas_aktif ?? fas.length}</td><td style="text-align:right">${idr(baki)}</td><td style="text-align:center"><span style="display:inline-flex;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700;background:${wkBg};color:${wkColor}">${wk}</span></td></tr>`);
+      });
+      perLaporanHtml = `<div style="margin-top:8px"><table class="data"><thead><tr><th>Tipe</th><th>Laporan</th><th>Tanggal</th><th style="text-align:right">Kreditur</th><th style="text-align:right">Fasilitas</th><th style="text-align:right">Baki Debet</th><th style="text-align:center">Kol</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+    }
+
     return `<div style="padding:8px 16px 4px"><span style="display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:10px;font-weight:700;background:${kolBg};color:${kolColor};border:1px solid ${kolBdr}">Kol ${sd.worstKol} — ${esc(sd.kolLabel)}</span></div>
 <div class="grid"><div class="metric"><div class="metric-label">Kreditur</div><div class="metric-value">${sd.jmlKreditur}</div></div><div class="metric"><div class="metric-label">Fasilitas</div><div class="metric-value">${sd.jmlFasilitas}</div></div><div class="metric"><div class="metric-label">Total Baki Debet</div><div class="metric-value">${idr(sd.totalBaki)}</div></div><div class="metric"><div class="metric-label">DSR</div><div class="metric-value" style="color:${dsrColor}">${dsrLabel}</div></div></div>
+${perLaporanHtml}
 <div class="grid" style="grid-template-columns:repeat(2,1fr);margin-top:0"><div class="metric"><div class="metric-label">Est. Pendapatan/Bln</div><div class="metric-value">${idr(sd.monthlyIncome)}</div></div><div class="metric"><div class="metric-label">Est. Cicilan Existing/Bln</div><div class="metric-value">${idr(sd.estCicilanPerBulan)}</div></div></div>`;
   })()) : ""}
 
@@ -285,14 +322,27 @@ ${printData.derivedRatios ? section("IV. Analisa Rasio Keuangan", (() => {
       ["Return on Assets (ROA)", pct(dr.roa), statusBadge(ratioTier(dr.roa, 5, 2))],
       ["Return on Equity (ROE)", pct(dr.roe), statusBadge(ratioTier(dr.roe, 15, 8))],
       ["EBITDA Margin", pct(dr.ebitdaMargin), statusBadge(ratioTier(dr.ebitdaMargin, 20, 10))],
+      ["Interest Coverage Ratio (ICR)", (() => {
+        const opRow = printData.pnlComparison?.rows?.find?.((r: any) => r.key === "operating_profit");
+        const ebitda = opRow?.annualizedTotal ?? opRow?.latestTotal ?? null;
+        const ie = printData.interestExpense || 0;
+        const icr = ebitda !== null && ie > 0 ? ebitda / ie : null;
+        return icr !== null ? `${icr.toFixed(2)}x` : "—";
+      })(), statusBadge((() => {
+        const opRow = printData.pnlComparison?.rows?.find?.((r: any) => r.key === "operating_profit");
+        const ebitda = opRow?.annualizedTotal ?? opRow?.latestTotal ?? null;
+        const ie = printData.interestExpense || 0;
+        const icr = ebitda !== null && ie > 0 ? ebitda / ie : null;
+        return ratioTier(icr, 2, 1.2);
+      })())],
       ["Debt-to-Equity (DER)", dr.der == null ? "—" : `${dr.der.toFixed(2)}x`, statusBadge(invTier(dr.der, 2, 3))],
       ["Debt-to-Asset (DAR)", pct(dr.dar), statusBadge(invTier(dr.dar, 50, 75))],
     ];
     return `<table class="data"><thead><tr><th>Rasio</th><th>Nilai</th><th>Status</th></tr></thead><tbody>
 <tr class="sub-hdr"><td colspan="3">Profitabilitas</td></tr>
-${rows.slice(0, 5).map(([r, v, s]) => `<tr><td>${r}</td><td>${v}</td><td>${s}</td></tr>`).join("")}
+${rows.slice(0, 6).map(([r, v, s]) => `<tr><td>${r}</td><td>${v}</td><td>${s}</td></tr>`).join("")}
 <tr class="sub-hdr"><td colspan="3">Leverage &amp; Solvabilitas</td></tr>
-${rows.slice(5).map(([r, v, s]) => `<tr><td>${r}</td><td>${v}</td><td>${s}</td></tr>`).join("")}
+${rows.slice(6).map(([r, v, s]) => `<tr><td>${r}</td><td>${v}</td><td>${s}</td></tr>`).join("")}
 </tbody></table>`;
   })()) : ""}
 

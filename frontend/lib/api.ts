@@ -67,6 +67,7 @@ export interface CompanySummary {
   total_transactions: number;
   total_credit: number;
   total_debit: number;
+  interest_expense: number;
   latest_status: string | null;
 }
 
@@ -172,7 +173,46 @@ export const companiesApi = {
   list: () => api.get<CompanySummary[]>("/companies"),
   get: (id: string) => api.get<CompanySummary>(`/companies/${id}`),
   statements: (id: string) => api.get<Statement[]>(`/companies/${id}/statements`),
+  bmpk: (modalBank?: number) => api.get<BmpkItem[]>("/companies/bmpk", { params: modalBank ? { modal_bank: modalBank } : {} }),
+  concentration: () => api.get<ConcentrationResponse>("/companies/concentration"),
+  covenants: {
+    list: (companyId: string) => api.get<CovenantOut[]>(`/companies/${companyId}/covenants`),
+    create: (companyId: string, data: { covenant_type: string; threshold: number; operator: string; period?: string; notes?: string | null }) =>
+      api.post<CovenantOut>(`/companies/${companyId}/covenants`, data),
+    delete: (companyId: string, covenantId: string) => api.delete(`/companies/${companyId}/covenants/${covenantId}`),
+  },
 };
+
+export interface CovenantOut {
+  id: string; company_id: string; covenant_type: string;
+  threshold: number; operator: string; period: string;
+  active: boolean; notes: string | null;
+  status: string | null; actual_value: number | null;
+  created_at: string;
+}
+
+export interface ConcentrationResponse {
+  items: ConcentrationItem[];
+  hhi: number;
+  hhi_label: string;
+  top3_pct: number;
+  total_exposure: number;
+}
+
+export interface ConcentrationItem {
+  company_id: string;
+  company_name: string;
+  total_credit: number;
+  pct_portfolio: number;
+}
+
+export interface BmpkItem {
+  company_id: string;
+  company_name: string;
+  total_credit: number;
+  pct_modal: number;
+  alert: boolean;
+}
 
 export interface SlikFasilitas {
   kreditur: string;
@@ -363,6 +403,21 @@ export const cbiApi = {
   assignCompany: (id: string, companyId: string | null) =>
     api.patch<CbiReport>(`/cbi/${id}/company`, { company_id: companyId }),
   delete: (id: string) => api.delete(`/cbi/${id}`),
+};
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  statement_id: string | null;
+  original_filename: string | null;
+  document_type: string | null;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export const auditApi = {
+  list: (params?: { action?: string; limit?: number; offset?: number }) =>
+    api.get<AuditLogEntry[]>("/audit/", { params }),
 };
 
 export const slikApi = {

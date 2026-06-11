@@ -14,7 +14,8 @@
       "Bash(.venv/bin/uvicorn *)",
       "Bash(.venv/bin/python *)",
       "Bash(find *)",
-      "Bash(pkill *)"
+      "Bash(pkill *)",
+      "Bash(python *)"
     ]
   },
   "$version": 4

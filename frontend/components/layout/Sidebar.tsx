@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   Building2, FileText, BarChart3, Settings,
   Home, CreditCard, AlertTriangle, TrendingDown,
-  FileSearch, Upload, ScrollText, Shield,
+  FileSearch, Upload, ScrollText, Shield, Activity, ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,36 +23,38 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Utama",
     items: [
-      { label: "Dashboard",  icon: Home,     href: "/" },
-      { label: "Insights",   icon: BarChart3, href: "/analytics" },
+      { label: "Dashboard", icon: Home, href: "/" },
+      { label: "Insights", icon: BarChart3, href: "/analytics" },
     ],
   },
   {
     title: "Debitur",
     items: [
-      { label: "Portfolio Debitur", icon: Building2,  href: "/companies" },
-      { label: "Fasilitas Kredit",  icon: CreditCard, href: "/loans" },
-      { label: "Credit Memo",       icon: ScrollText, href: "/memo" },
+      { label: "Portfolio Debitur", icon: Building2, href: "/companies" },
+      { label: "Fasilitas Kredit", icon: CreditCard, href: "/loans" },
+      { label: "Credit Memo", icon: ScrollText, href: "/memo" },
     ],
   },
   {
     title: "Analisis",
     items: [
-      { label: "Dokumen",          icon: FileText,    href: "/documents" },
-      { label: "iDEB Parser",     icon: FileSearch,  href: "/idebt-parser" },
-      { label: "Upload Dokumen",  icon: Upload,      href: "/upload" },
+      { label: "Dokumen", icon: FileText, href: "/documents" },
+      { label: "iDEB Parser", icon: FileSearch, href: "/idebt-parser" },
+      { label: "Upload Dokumen", icon: Upload, href: "/upload" },
     ],
   },
   {
     title: "Monitoring",
     items: [
-      { label: "Watch List",   icon: AlertTriangle, href: "/watchlist" },
-      { label: "NPL Tracker",  icon: TrendingDown,  href: "/npl" },
+      { label: "Watch List", icon: AlertTriangle, href: "/watchlist" },
+      { label: "NPL Tracker", icon: TrendingDown, href: "/npl" },
+      { label: "Bandingkan", icon: ArrowUpDown, href: "/compare" },
     ],
   },
   {
     title: "Pengaturan",
     items: [
+      { label: "Audit Trail", icon: Activity, href: "/audit" },
       { label: "Pengaturan", icon: Shield, href: "/admin" },
     ],
   },

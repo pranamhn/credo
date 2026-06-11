@@ -1,17 +1,21 @@
 "use client";
 
 import { Printer, PencilLine, ShieldCheck, Plus, X, Download } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, Tooltip } from "recharts";
 import { formatIDR, formatDate } from "@/lib/utils";
-import type { CompanySummary, SlikReport, CbiReport } from "@/lib/api";
+import type { CompanySummary, SlikReport, CbiReport, ClickReport } from "@/lib/api";
 import type { CompanyProfile, CreditMemo, ScoringAspect, DebtEntry, ApproverEntry } from "@/lib/localData";
 import type { Rating, CreditScoreBreakdown, MonthlyData } from "../_lib/company-detail-types";
 import { RATING_META, MONTHS_ID } from "../_lib/company-detail-constants";
 import { growthBadge } from "../_lib/company-detail-helpers";
 
+type PnlSparklinePoint = { label: string; revenue: number | null; netIncome: number | null };
+
 type PnlComparison = {
   priorLabel: string | null;
   latestLabel: string;
   latestMo: number;
+  sparkline: PnlSparklinePoint[];
   rows: {
     key: string; label: string; isBold: boolean;
     latestTotal: number | null; priorTotal: number | null;
@@ -31,10 +35,19 @@ type BsComparison = {
   }[];
 } | null;
 
+type CfComparison = {
+  priorLabel: string | null;
+  latestLabel: string;
+  rows: {
+    key: string; label: string; isBold: boolean;
+    latestValue: number | null; priorValue: number | null; growthPct: number | null;
+  }[];
+} | null;
+
 type DerivedRatios = {
   grossMargin: number | null; ebitdaMargin: number | null;
   netMargin: number | null; der: number | null; dar: number | null;
-  roe: number | null; roa: number | null; isAnnualized: boolean;
+  roe: number | null; roa: number | null; currentRatio: number | null; isAnnualized: boolean;
 } | null;
 
 type SlikDerived = {
@@ -45,6 +58,7 @@ type SlikDerived = {
 interface Props {
   summary: CompanySummary;
   company: { name: string };
+  companyId: string;
   profile: CompanyProfile;
   memo: Pick<CreditMemo, "loanAmount" | "tenor">;
   rating: Rating;
@@ -57,8 +71,10 @@ interface Props {
   slikDerived: SlikDerived;
   slikReports: SlikReport[];
   cbiReports: CbiReport[];
+  clickReports: ClickReport[];
   pnlComparison: PnlComparison;
   bsComparison: BsComparison;
+  cfComparison: CfComparison;
   derivedRatios: DerivedRatios;
   monthlyData: MonthlyData[];
   notes: string;
@@ -78,11 +94,11 @@ interface Props {
 }
 
 export function CreditSummaryTab({
-  summary, company, profile, memo,
+  summary, company, companyId, profile, memo,
   rating, ratingMeta, creditScore, ewsTier,
   netFlow, entityType, lamaBerdiri,
-  slikDerived, slikReports, cbiReports,
-  pnlComparison, bsComparison, derivedRatios,
+  slikDerived, slikReports, cbiReports, clickReports,
+  pnlComparison, bsComparison, cfComparison, derivedRatios,
   monthlyData, notes, saveNotes, printSummary,
   debtEntries, scoringAspects, dscrCicilanBaru,
   updateDscrCicilanBaru, addDebtEntry, updateDebtEntry, removeDebtEntry, importDebtEntries,
@@ -91,7 +107,16 @@ export function CreditSummaryTab({
 }: Props) {
   return (
     <div className="p-6 space-y-5">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <a
+          href={`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/companies/${companyId}/export/pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-100"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Unduh PDF
+        </a>
         <button
           type="button"
           onClick={printSummary}
@@ -325,7 +350,7 @@ export function CreditSummaryTab({
                           </td>
                           <td className="px-3 py-2 text-slate-700 max-w-[130px] truncate" title={r.original_filename}>{r.original_filename}</td>
                           <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.tanggal_laporan ?? "—"}</td>
-                          <td className="px-3 py-2 text-right text-slate-700">{r.jumlah_kreditur ?? fas.length}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">{Math.max(r.jumlah_kreditur ?? 0, new Set(fas.map(f => f.kreditur).filter(Boolean)).size || fas.length)}</td>
                           <td className="px-3 py-2 text-right text-slate-700">{r.jumlah_fasilitas ?? fas.length}</td>
                           <td className="px-3 py-2 text-right tabular-nums text-slate-700">{formatIDR(baki)}</td>
                           <td className="px-3 py-2 text-center">
@@ -352,8 +377,35 @@ export function CreditSummaryTab({
                           </td>
                           <td className="px-3 py-2 text-slate-700 max-w-[130px] truncate" title={r.original_filename}>{r.original_filename}</td>
                           <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.tanggal_laporan ?? "—"}</td>
-                          <td className="px-3 py-2 text-right text-slate-700">{r.jumlah_kreditur_aktif ?? fas.length}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">{Math.max(r.jumlah_kreditur_aktif ?? 0, new Set(fas.map(f => f.kreditur).filter(Boolean)).size || fas.length)}</td>
                           <td className="px-3 py-2 text-right text-slate-700">{r.jumlah_fasilitas_aktif ?? fas.length}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-slate-700">{formatIDR(baki)}</td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold ${wk === 1 ? "bg-emerald-50 text-emerald-700"
+                              : wk === 2 ? "bg-amber-50 text-amber-700"
+                                : "bg-red-50 text-red-700"
+                              }`}>{wk}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {clickReports.map((r) => {
+                      const fas = r.parsed_data?.fasilitas_aktif ?? [];
+                      const wk = fas.reduce((w, f) => {
+                        const k = parseInt(f.kualitas.replace(/\D/g, ""), 10);
+                        return isNaN(k) ? w : Math.max(w, k);
+                      }, 1);
+                      const baki = r.parsed_data?.total_debit_balance
+                        ?? fas.reduce((s, f) => s + (f.baki_debet ?? 0), 0);
+                      return (
+                        <tr key={r.id} className="border-b border-slate-50 last:border-b-0">
+                          <td className="px-3 py-2">
+                            <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-violet-50 text-violet-700">CLICK</span>
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 max-w-[130px] truncate" title={r.original_filename}>{r.original_filename}</td>
+                          <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{r.tanggal_laporan ?? "—"}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">{Math.max(r.jumlah_kreditur ?? 0, new Set(fas.map(f => f.kreditur).filter(Boolean)).size || fas.length)}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">{r.jumlah_kontrak ?? fas.length}</td>
                           <td className="px-3 py-2 text-right tabular-nums text-slate-700">{formatIDR(baki)}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold ${wk === 1 ? "bg-emerald-50 text-emerald-700"
@@ -389,9 +441,26 @@ export function CreditSummaryTab({
       {/* III-A: Laporan Laba Rugi */}
       {pnlComparison ? (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-700">III-A. Laporan Laba Rugi</p>
-            <span className="text-[10px] text-slate-400">Year-over-Year Comparison</span>
+          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-xs font-bold text-slate-700">III-A. Laporan Laba Rugi</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Year-over-Year Comparison</p>
+            </div>
+            {pnlComparison.sparkline.length >= 2 && (
+              <div className="w-40 h-10 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={pnlComparison.sparkline} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                    <Tooltip
+                      contentStyle={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, border: "1px solid #e2e8f0" }}
+                      formatter={(v, name) => [formatIDR(Number(v ?? 0)), name === "revenue" ? "Revenue" : "Net Income"]}
+                      labelFormatter={(l) => `Periode: ${l}`}
+                    />
+                    <Line type="monotone" dataKey="revenue" stroke="#7c3aed" strokeWidth={1.5} dot={false} />
+                    <Line type="monotone" dataKey="netIncome" stroke="#10b981" strokeWidth={1.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full table-fixed text-xs">
@@ -558,6 +627,51 @@ export function CreditSummaryTab({
         )}
       </div>
 
+      {/* III-D. Arus Kas (Cash Flow Statement) */}
+      {cfComparison && (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+            <p className="text-xs font-bold text-slate-700">III-D. Laporan Arus Kas</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{cfComparison.latestLabel}{cfComparison.priorLabel ? ` vs ${cfComparison.priorLabel}` : ""}</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="border-b border-slate-100 bg-slate-50/80">
+                <tr>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400">Komponen</th>
+                  {cfComparison.priorLabel && <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">{cfComparison.priorLabel}</th>}
+                  <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">{cfComparison.latestLabel}</th>
+                  {cfComparison.priorLabel && <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400">Growth</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {cfComparison.rows.map((row) => (
+                  <tr key={row.key} className={`border-b border-slate-50 last:border-b-0 hover:bg-slate-50/40 ${row.isBold ? "bg-slate-50/60" : ""}`}>
+                    <td className={`px-4 py-2.5 ${row.isBold ? "font-semibold text-slate-800" : "text-slate-600"}`}>{row.label}</td>
+                    {cfComparison.priorLabel && (
+                      <td className={`px-4 py-2.5 text-right tabular-nums ${row.priorValue !== null && row.priorValue < 0 ? "text-red-600" : "text-slate-600"}`}>
+                        {row.priorValue === null ? "—" : formatIDR(row.priorValue)}
+                      </td>
+                    )}
+                    <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${row.latestValue !== null && row.latestValue < 0 ? "text-red-600" : "text-slate-800"}`}>
+                      {row.latestValue === null ? "—" : formatIDR(row.latestValue)}
+                    </td>
+                    {cfComparison.priorLabel && (
+                      <td className="px-4 py-2.5 text-right tabular-nums text-[11px]">
+                        {row.growthPct === null ? <span className="text-slate-300">—</span>
+                          : <span className={row.growthPct >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
+                            {row.growthPct >= 0 ? "+" : ""}{row.growthPct.toFixed(1)}%
+                          </span>}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* IV. Analisa Rasio Keuangan */}
       {derivedRatios && (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -586,6 +700,13 @@ export function CreditSummaryTab({
                   { label: `Return on Assets (ROA)${derivedRatios.isAnnualized ? "*" : ""}`, value: derivedRatios.roa, fmt: "pct", thresholds: [5, 2] },
                   { label: `Return on Equity (ROE)${derivedRatios.isAnnualized ? "*" : ""}`, value: derivedRatios.roe, fmt: "pct", thresholds: [15, 8] },
                   { label: "EBITDA Margin", value: derivedRatios.ebitdaMargin, fmt: "pct", thresholds: [20, 10] },
+                  (() => {
+                    const opRow = pnlComparison?.rows.find((r: any) => r.key === "operating_profit");
+                    const ebitda = opRow?.annualizedTotal ?? opRow?.latestTotal ?? null;
+                    const interestExp = Number(summary.interest_expense) || 0;
+                    const icr = ebitda !== null && interestExp > 0 ? ebitda / interestExp : null;
+                    return { label: "Interest Coverage Ratio (ICR)", value: icr, fmt: "ratio", thresholds: [2, 1.2] };
+                  })(),
                 ].map(({ label, value, fmt, thresholds }) => {
                   const display = value === null ? "—" : fmt === "ratio" ? `${value.toFixed(2)}x` : `${value.toFixed(2)}%`;
                   const tier = value === null ? null : value >= thresholds[0] ? "ok" : value >= thresholds[1] ? "warn" : "bad";
@@ -606,14 +727,17 @@ export function CreditSummaryTab({
                   <td colSpan={3} className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Leverage &amp; Solvabilitas</td>
                 </tr>
                 {[
-                  { label: "Debt-to-Equity Ratio (DER)", value: derivedRatios.der, fmt: "ratio", inverted: true, goodBelow: 2 },
-                  { label: "Debt-to-Asset Ratio (DAR)", value: derivedRatios.dar, fmt: "pct", inverted: true, goodBelow: 50 },
-                ].map(({ label, value, fmt, inverted, goodBelow }) => {
+                  { label: "Debt-to-Equity Ratio (DER)", value: derivedRatios.der, fmt: "ratio", inverted: true, goodBelow: 2, goodAbove: null },
+                  { label: "Debt-to-Asset Ratio (DAR)", value: derivedRatios.dar, fmt: "pct", inverted: true, goodBelow: 50, goodAbove: null },
+                  { label: "Current Ratio", value: derivedRatios.currentRatio, fmt: "ratio", inverted: false, goodBelow: null, goodAbove: 1.5 },
+                ].map(({ label, value, fmt, inverted, goodBelow, goodAbove }) => {
                   const display = value === null ? "—" : fmt === "ratio" ? `${value.toFixed(2)}x` : `${value.toFixed(2)}%`;
                   const tier = value === null ? null
-                    : inverted
+                    : inverted && goodBelow !== null
                       ? value < goodBelow ? "ok" : value < goodBelow * 1.5 ? "warn" : "bad"
-                      : "ok";
+                      : goodAbove !== null
+                        ? value >= goodAbove ? "ok" : value >= goodAbove * 0.67 ? "warn" : "bad"
+                        : "ok";
                   return (
                     <tr key={label} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50/40">
                       <td className="px-4 py-2.5 text-slate-700">{label}</td>

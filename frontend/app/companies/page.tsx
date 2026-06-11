@@ -6,7 +6,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { DataCard, EmptyState, GlowButton, PageHeader, Pagination } from "@/components/ui-kit";
 import { companiesApi, CompanySummary } from "@/lib/api";
 import { formatDate, formatIDR } from "@/lib/utils";
-import { Building2, Check, ChevronDown, FileText, Filter, LayoutGrid, List, Plus, Search, TrendingDown, TrendingUp, X } from "lucide-react";
+import { Building2, Check, ChevronDown, Download, FileText, Filter, LayoutGrid, List, Plus, Search, TrendingDown, TrendingUp, X } from "lucide-react";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 9;
@@ -116,6 +116,28 @@ export default function CompaniesPage() {
   };
   useEffect(load, []);
 
+  const exportPortfolio = () => {
+    const headers = ["Nama Perusahaan", "Risk Tier", "Total Kredit", "Total Debit", "Net Flow", "Dok Upload", "Gagal Parse", "Bank Statement", "P&L", "Cash Flow", "Neraca", "Status Terakhir"];
+    const rows = companies.map((c) => {
+      const netFlow = Number(c.total_credit) - Number(c.total_debit);
+      const tier = getRiskTier(c);
+      return [
+        `"${c.company.name}"`, tier,
+        Number(c.total_credit).toFixed(0), Number(c.total_debit).toFixed(0), netFlow.toFixed(0),
+        c.document_count, c.failed_uploads,
+        c.bank_statement_count, c.profit_loss_count, c.cash_flow_count, c.balance_sheet_count,
+        c.latest_status ?? "—",
+      ].join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    toast.success(`${companies.length} perusahaan diexport`);
+  };
+
   const create = async () => {
     if (!name.trim()) { toast.error("Nama perusahaan wajib diisi"); return; }
     setCreating(true);
@@ -157,35 +179,21 @@ export default function CompaniesPage() {
     if (tier === "Low") return "bg-emerald-50 text-emerald-700 ring-emerald-200";
     return "bg-violet-50 text-violet-700 ring-blue-200";
   };
-  const searchControl = !loading && companies.length > 0 ? (
-    <label className="relative block w-full sm:w-64">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-      <input
-        value={search}
-        onChange={(event) => {
-          setSearch(event.target.value);
-          setPage(1);
-        }}
-        placeholder="Cari perusahaan..."
-        className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/15"
-      />
-    </label>
-  ) : null;
-  const viewModeControl = !loading && companies.length > 0 ? (
-    <div className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 shadow-sm">
+  const viewModeControl = (
+    <div className="flex h-8 items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
       <button
         type="button"
         title="List View"
         aria-label="List View"
         aria-pressed={viewMode === "list"}
         onClick={() => setViewMode("list")}
-        className={`rounded-md p-1.5 transition-colors ${
+        className={`rounded-md p-1 transition-colors ${
           viewMode === "list"
             ? "bg-white text-violet-700 shadow-sm"
             : "text-slate-400 hover:text-slate-600"
         }`}
       >
-        <List className="h-4 w-4" />
+        <List className="h-3.5 w-3.5" />
       </button>
       <button
         type="button"
@@ -193,17 +201,17 @@ export default function CompaniesPage() {
         aria-label="Kanban View"
         aria-pressed={viewMode === "kanban"}
         onClick={() => setViewMode("kanban")}
-        className={`rounded-md p-1.5 transition-colors ${
+        className={`rounded-md p-1 transition-colors ${
           viewMode === "kanban"
             ? "bg-white text-violet-700 shadow-sm"
             : "text-slate-400 hover:text-slate-600"
         }`}
       >
-        <LayoutGrid className="h-4 w-4" />
+        <LayoutGrid className="h-3.5 w-3.5" />
       </button>
     </div>
-  ) : null;
-  const riskFilterDropdown = !loading && companies.length > 0 ? (
+  );
+  const riskFilterDropdown = (
     <div
       className="relative"
       onBlur={(event) => {
@@ -215,15 +223,11 @@ export default function CompaniesPage() {
         aria-haspopup="listbox"
         aria-expanded={riskMenuOpen}
         onClick={() => setRiskMenuOpen((open) => !open)}
-        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-150 select-none hover:bg-violet-700 active:bg-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-500/25"
+        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 focus:outline-none"
       >
-        <span className="shrink-0 h-4 w-4">
-          <Filter className="h-4 w-4" />
-        </span>
+        <Filter className="h-3.5 w-3.5 text-slate-400" />
         <span>Risk: {riskFilter}</span>
-        <span className="shrink-0 h-4 w-4">
-          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${riskMenuOpen ? "rotate-180" : ""}`} />
-        </span>
+        <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${riskMenuOpen ? "rotate-180" : ""}`} />
       </button>
 
       <div
@@ -273,7 +277,7 @@ export default function CompaniesPage() {
         })}
       </div>
     </div>
-  ) : null;
+  );
 
   return (
     <AppShell>
@@ -284,8 +288,9 @@ export default function CompaniesPage() {
           description="Manajemen profil perusahaan dan monitoring risiko kredit"
           actions={
             <>
-              {searchControl}
-              {riskFilterDropdown}
+              <GlowButton variant="secondary" icon={<Download className="h-4 w-4" />} onClick={exportPortfolio}>
+                Export CSV
+              </GlowButton>
               <GlowButton
                 variant="primary"
                 icon={<Plus className="h-4 w-4" />}
@@ -293,10 +298,25 @@ export default function CompaniesPage() {
               >
                 Buat Perusahaan
               </GlowButton>
-              {viewModeControl}
             </>
           }
         />
+
+        {!loading && companies.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="relative flex-1 min-w-40 max-w-xs">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+                placeholder="Cari perusahaan..."
+                className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-700 outline-none transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/15"
+              />
+            </label>
+            {riskFilterDropdown}
+            <div className="ml-auto">{viewModeControl}</div>
+          </div>
+        )}
 
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm">

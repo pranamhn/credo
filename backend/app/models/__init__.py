@@ -7,8 +7,10 @@ from .risk_result import RiskResult
 from .audit_log import AuditLog
 from .slik_report import SlikReport
 from .cbi_report import CbiReport
+from .covenant import Covenant
 
 __all__ = [
+    "Company",
     "User", "Role",
     "Statement", "StatementStatus",
     "Transaction",
@@ -17,4 +19,5 @@ __all__ = [
     "AuditLog",
     "SlikReport",
     "CbiReport",
+    "Covenant",
 ]

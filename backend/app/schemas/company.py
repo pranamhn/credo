@@ -33,4 +33,5 @@ class CompanySummary(BaseModel):
     total_transactions: int
     total_credit: Decimal
     total_debit: Decimal
+    interest_expense: Decimal
     latest_status: str | None = None

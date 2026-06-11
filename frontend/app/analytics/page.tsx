@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader, DataCard, StatCard } from "@/components/ui-kit";
 import { Skeleton } from "@/components/ui/skeleton";
-import { statementsApi, companiesApi, Statement, CompanySummary } from "@/lib/api";
+import { statementsApi, companiesApi, Statement, CompanySummary, BmpkItem, ConcentrationResponse } from "@/lib/api";
 import { localData } from "@/lib/localData";
 import { formatIDR } from "@/lib/utils";
 import { BarChart2, Building2, TrendingUp } from "lucide-react";
@@ -52,12 +52,22 @@ export default function AnalyticsPage() {
   const [statements, setStatements] = useState<Statement[]>([]);
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bmpkData, setBmpkData] = useState<BmpkItem[]>([]);
+  const [concentration, setConcentration] = useState<ConcentrationResponse | null>(null);
   const [period, setPeriod] = useState<3 | 6 | 12 | 0>(0);
+  const [stressScenarios, setStressScenarios] = useState([
+    { label: "Base Case", shock: 0 },
+    { label: "Mild Stress (-10%)", shock: 10 },
+    { label: "Moderate Stress (-20%)", shock: 20 },
+    { label: "Severe Stress (-30%)", shock: 30 },
+  ]);
 
   useEffect(() => {
     Promise.all([statementsApi.list(), companiesApi.list()])
       .then(([s, c]) => { setStatements(s.data); setCompanies(c.data); })
       .finally(() => setLoading(false));
+    companiesApi.bmpk().then(({ data }) => setBmpkData(data));
+    companiesApi.concentration().then(({ data }) => setConcentration(data)).catch(() => { });
   }, []);
 
   const activeStatements = useMemo(() => {
@@ -167,15 +177,11 @@ export default function AnalyticsPage() {
     if (loans.length === 0) return null;
     const totalOutstanding = loans.reduce((s, l) => s + l.outstanding, 0);
     const currentNpl = loans.filter((l) => l.kolektibilitas >= 3).reduce((s, l) => s + l.outstanding, 0);
-    return [
-      { label: "Base Case", shock: 0 },
-      { label: "Mild Stress (-10%)", shock: 0.10 },
-      { label: "Moderate Stress (-20%)", shock: 0.20 },
-      { label: "Severe Stress (-30%)", shock: 0.30 },
-    ].map((sc) => {
+    return stressScenarios.map((sc) => {
+      const shockFrac = sc.shock / 100;
       const migratedNpl = loans.reduce((s, l) => {
         if (l.kolektibilitas >= 3) return s + l.outstanding;
-        const migrateProb = l.kolektibilitas === 1 ? sc.shock * 0.3 : sc.shock * 0.6;
+        const migrateProb = l.kolektibilitas === 1 ? shockFrac * 0.3 : shockFrac * 0.6;
         return s + l.outstanding * migrateProb;
       }, 0);
       const newNpl = currentNpl + migratedNpl;
@@ -183,7 +189,7 @@ export default function AnalyticsPage() {
       const estimatedCkpn = newNpl * 0.5 + (totalOutstanding - newNpl) * 0.01;
       return { ...sc, nplRatio, newNpl, estimatedCkpn };
     });
-  }, []);
+  }, [stressScenarios]);
 
   return (
     <AppShell>
@@ -195,7 +201,7 @@ export default function AnalyticsPage() {
           actions={
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
-                {([{ label: "Semua", value: 0 }, { label: "3B", value: 3 }, { label: "6B", value: 6 }, { label: "12B", value: 12 }] as { label: string; value: 0|3|6|12 }[]).map(({ label, value }) => (
+                {([{ label: "Semua", value: 0 }, { label: "3B", value: 3 }, { label: "6B", value: 6 }, { label: "12B", value: 12 }] as { label: string; value: 0 | 3 | 6 | 12 }[]).map(({ label, value }) => (
                   <button key={value} onClick={() => setPeriod(value)}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${period === value ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
                     {label}
@@ -208,7 +214,7 @@ export default function AnalyticsPage() {
 
         {loading ? (
           <div className="space-y-4">
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">{[0,1,2,3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
             <Skeleton className="h-64 rounded-xl" />
             <div className="grid gap-4 lg:grid-cols-2"><Skeleton className="h-56 rounded-xl" /><Skeleton className="h-56 rounded-xl" /></div>
           </div>
@@ -222,7 +228,7 @@ export default function AnalyticsPage() {
                 label="Total Perusahaan"
                 color="cyan"
                 subtitle="High / Medium / Low"
-                subtitleValue={`${tierData.find(d=>d.name==="High")?.value??0} · ${tierData.find(d=>d.name==="Medium")?.value??0} · ${tierData.find(d=>d.name==="Low")?.value??0}`}
+                subtitleValue={`${tierData.find(d => d.name === "High")?.value ?? 0} · ${tierData.find(d => d.name === "Medium")?.value ?? 0} · ${tierData.find(d => d.name === "Low")?.value ?? 0}`}
               />
               <StatCard
                 icon={<BarChart2 className="h-4 w-4" />}
@@ -230,7 +236,7 @@ export default function AnalyticsPage() {
                 label="Total Statement"
                 color="indigo"
                 subtitle="Selesai diparse"
-                subtitleValue={statusChart.find(s=>s.status==="done")?.count ?? 0}
+                subtitleValue={statusChart.find(s => s.status === "done")?.count ?? 0}
               />
               <StatCard
                 icon={<TrendingUp className="h-4 w-4" />}
@@ -262,9 +268,9 @@ export default function AnalyticsPage() {
                     <YAxis tick={AXIS_TICK} tickLine={false} allowDecimals={false} />
                     <Tooltip {...TOOLTIP_STYLE} />
                     <Legend wrapperStyle={{ fontSize: 11, color: "#64748b" }} />
-                    <Bar dataKey="uploaded" name="Diupload" fill="#7c3aed" radius={[3,3,0,0]} />
-                    <Bar dataKey="done"     name="Selesai"  fill="#10b981" radius={[3,3,0,0]} />
-                    <Bar dataKey="failed"   name="Gagal"    fill="#ef4444" radius={[3,3,0,0]} />
+                    <Bar dataKey="uploaded" name="Diupload" fill="#7c3aed" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="done" name="Selesai" fill="#10b981" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="failed" name="Gagal" fill="#ef4444" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </DataCard>
@@ -282,7 +288,7 @@ export default function AnalyticsPage() {
                     <XAxis type="number" tick={AXIS_TICK} tickLine={false} unit="M" />
                     <YAxis type="category" dataKey="name" width={120} tick={<CustomYTick />} tickLine={false} />
                     <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [`Rp ${Number(v).toFixed(1)}M`, "Net Flow"]} />
-                    <Bar dataKey="net" name="Net Flow" radius={[0,4,4,0]}
+                    <Bar dataKey="net" name="Net Flow" radius={[0, 4, 4, 0]}
                       label={{ position: "right", fontSize: 10, fill: "#94a3b8", formatter: (v: unknown) => { const n = Number(v); return n >= 0 ? `+${n.toFixed(1)}M` : `${n.toFixed(1)}M`; } }}
                     >
                       {netFlowBarData.map((d, i) => (
@@ -317,11 +323,10 @@ export default function AnalyticsPage() {
                           <td className="px-4 py-3 text-xs text-slate-400">{i + 1}</td>
                           <td className="px-4 py-3 text-sm font-medium text-slate-800 max-w-[180px] truncate">{c.company.name}</td>
                           <td className="px-4 py-3">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ring-1 ${
-                              tier === "High" ? "bg-red-100 text-red-700 ring-red-200"
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ring-1 ${tier === "High" ? "bg-red-100 text-red-700 ring-red-200"
                               : tier === "Medium" ? "bg-amber-100 text-amber-700 ring-amber-200"
-                              : "bg-emerald-100 text-emerald-700 ring-emerald-200"
-                            }`}>{tier}</span>
+                                : "bg-emerald-100 text-emerald-700 ring-emerald-200"
+                              }`}>{tier}</span>
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-500">{c.document_count}</td>
                           <td className="px-4 py-3 text-xs">
@@ -416,41 +421,105 @@ export default function AnalyticsPage() {
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
 
-                {(obligorData || vintageData) && (
+                {(bmpkData.length > 0 || concentration || vintageData) && (
                   <div className="grid gap-4 lg:grid-cols-2">
-                    {obligorData && (
+                    {concentration && (
                       <DataCard padding="flush">
-                        <div className="px-5 py-3.5 border-b border-slate-100">
-                          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Single Obligor Limit (Top 10)</p>
+                        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Concentration Risk</p>
+                          <span className={concentration.hhi < 1000 ? "inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                            : concentration.hhi < 1800 ? "inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                              : "inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 ring-1 ring-red-200"}>
+                            HHI: {concentration.hhi.toFixed(0)} — {concentration.hhi_label}
+                          </span>
+                        </div>
+                        <div className="p-4 grid grid-cols-3 gap-3">
+                          <div className="text-center">
+                            <p className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Total Exposure</p>
+                            <p className="text-sm font-bold text-slate-800 mt-1">{formatIDR(concentration.total_exposure)}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Top 3 Share</p>
+                            <p className="text-sm font-bold text-slate-800 mt-1">{concentration.top3_pct.toFixed(1)}%</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">Debitur</p>
+                            <p className="text-sm font-bold text-slate-800 mt-1">{concentration.items.length}</p>
+                          </div>
                         </div>
                         <table className="w-full text-sm">
-                          <thead className="border-b border-slate-100 bg-slate-50">
-                            <tr>{["Perusahaan", "Outstanding", "Fasilitas", "% Modal", ""].map((h) => <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>)}</tr>
+                          <thead className="border-t border-b border-slate-100 bg-slate-50">
+                            <tr>{["Perusahaan", "Total Kredit", "Share", ""].map((h) => <th key={h} className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>)}</tr>
                           </thead>
                           <tbody>
-                            {obligorData.map((g) => (
-                              <tr key={g.name} className="border-b border-slate-100 hover:bg-slate-50 last:border-b-0">
-                                <td className="px-4 py-3 text-xs font-medium text-slate-700 max-w-[140px] truncate">{g.name}</td>
-                                <td className="px-4 py-3 text-xs font-semibold text-slate-800 whitespace-nowrap">{formatIDR(g.totalOutstanding)}</td>
-                                <td className="px-4 py-3 text-xs text-slate-500">{g.count}</td>
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-1.5 w-20 rounded-full bg-slate-100 overflow-hidden">
-                                      <div className={`h-full rounded-full ${g.pctModal > 25 ? "bg-red-500" : g.pctModal > 20 ? "bg-amber-500" : "bg-emerald-500"}`}
-                                        style={{ width: `${Math.min(g.pctModal, 100)}%` }} />
+                            {concentration.items.slice(0, 8).map((item) => (
+                              <tr key={item.company_id} className="border-b border-slate-50 hover:bg-slate-50 last:border-b-0">
+                                <td className="px-4 py-2 text-xs text-slate-700 truncate max-w-[120px]">{item.company_name}</td>
+                                <td className="px-4 py-2 text-xs font-semibold text-slate-800 whitespace-nowrap">{formatIDR(item.total_credit)}</td>
+                                <td className="px-4 py-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="h-1.5 flex-1 rounded-full bg-slate-100 overflow-hidden max-w-[60px]">
+                                      <div className="h-full rounded-full bg-violet-400" style={{ width: `${Math.min(item.pct_portfolio, 100)}%` }} />
                                     </div>
-                                    <span className={`text-[10px] font-bold ${g.pctModal > 25 ? "text-red-600" : "text-slate-500"}`}>{g.pctModal.toFixed(1)}%</span>
+                                    <span className="text-[10px] text-slate-500 tabular-nums">{item.pct_portfolio.toFixed(1)}%</span>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3">
-                                  {g.pctModal > 25 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 ring-1 ring-red-200">BMPK</span>}
-                                </td>
+                                <td className="px-4 py-2" />
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </DataCard>
                     )}
+                    <DataCard padding="flush">
+                      <div className="px-5 py-3.5 border-b border-slate-100">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">BMPK — Single Obligor Limit</p>
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead className="border-b border-slate-100 bg-slate-50">
+                          <tr>{["Perusahaan", "Total Kredit", "% Modal", ""].map((h) => <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>)}</tr>
+                        </thead>
+                        <tbody>
+                          {bmpkData.slice(0, 10).map((g) => (
+                            <tr key={g.company_id} className="border-b border-slate-100 hover:bg-slate-50 last:border-b-0">
+                              <td className="px-4 py-3 text-xs font-medium text-slate-700 max-w-[160px] truncate">{g.company_name}</td>
+                              <td className="px-4 py-3 text-xs font-semibold text-slate-800 whitespace-nowrap">{formatIDR(g.total_credit)}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 w-20 rounded-full bg-slate-100 overflow-hidden">
+                                    <div className={`h-full rounded-full ${g.pct_modal > 25 ? "bg-red-500" : g.pct_modal > 20 ? "bg-amber-500" : "bg-emerald-500"}`}
+                                      style={{ width: `${Math.min(g.pct_modal, 100)}%` }} />
+                                  </div>
+                                  <span className={`text-[10px] font-bold ${g.pct_modal > 25 ? "text-red-600" : "text-slate-500"}`}>{g.pct_modal.toFixed(1)}%</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                {g.alert && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 ring-1 ring-red-200">BMPK</span>}
+                              </td>
+                            </tr>
+                          ))}
+                          {bmpkData.length === 0 && obligorData && obligorData.map((g) => (
+                            <tr key={g.name} className="border-b border-slate-100 hover:bg-slate-50 last:border-b-0">
+                              <td className="px-4 py-3 text-xs font-medium text-slate-700 max-w-[140px] truncate">{g.name}</td>
+                              <td className="px-4 py-3 text-xs font-semibold text-slate-800 whitespace-nowrap">{formatIDR(g.totalOutstanding)}</td>
+                              <td className="px-4 py-3 text-xs text-slate-500">{g.count}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 w-20 rounded-full bg-slate-100 overflow-hidden">
+                                    <div className={`h-full rounded-full ${g.pctModal > 25 ? "bg-red-500" : g.pctModal > 20 ? "bg-amber-500" : "bg-emerald-500"}`}
+                                      style={{ width: `${Math.min(g.pctModal, 100)}%` }} />
+                                  </div>
+                                  <span className={`text-[10px] font-bold ${g.pctModal > 25 ? "text-red-600" : "text-slate-500"}`}>{g.pctModal.toFixed(1)}%</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                {g.pctModal > 25 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 ring-1 ring-red-200">BMPK</span>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </DataCard>
 
                     {vintageData && (
                       <DataCard>
@@ -481,16 +550,42 @@ export default function AnalyticsPage() {
 
                 {stressTestData && (
                   <DataCard>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Stress Testing — Dampak ke NPL & CKPN</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Stress Testing — Dampak ke NPL &amp; CKPN</p>
+                      <button onClick={() => setStressScenarios((prev) => [...prev, { label: `Custom Stress`, shock: 15 }])}
+                        className="rounded-lg border border-dashed border-slate-300 px-3 py-1 text-[11px] font-semibold text-slate-500 hover:border-violet-400 hover:text-violet-600 transition-colors">
+                        + Tambah Skenario
+                      </button>
+                    </div>
+                    {/* Scenario configurator */}
+                    <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      {stressScenarios.map((sc, idx) => (
+                        <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 space-y-1.5">
+                          <input value={sc.label} onChange={(e) => setStressScenarios((prev) => prev.map((s, i) => i === idx ? { ...s, label: e.target.value } : s))}
+                            className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-violet-400" />
+                          <div className="flex items-center gap-1.5">
+                            <input type="number" min={0} max={100} value={sc.shock}
+                              onChange={(e) => setStressScenarios((prev) => prev.map((s, i) => i === idx ? { ...s, shock: Number(e.target.value) } : s))}
+                              className="w-16 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-violet-400" />
+                            <span className="text-[11px] text-slate-400">% shock</span>
+                            {idx > 0 && (
+                              <button onClick={() => setStressScenarios((prev) => prev.filter((_, i) => i !== idx))}
+                                className="ml-auto text-slate-300 hover:text-red-500 text-[11px]">✕</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="border-b border-slate-100 bg-slate-50">
-                          <tr>{["Scenario", "NPL Ratio", "NPL Amount", "Estimasi CKPN", "Status"].map((h) => <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>)}</tr>
+                          <tr>{["Scenario", "Shock", "NPL Ratio", "NPL Amount", "Estimasi CKPN", "Status"].map((h) => <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>)}</tr>
                         </thead>
                         <tbody>
                           {stressTestData.map((sc) => (
                             <tr key={sc.label} className="border-b border-slate-100 hover:bg-slate-50 last:border-b-0">
                               <td className="px-4 py-3 text-xs font-semibold text-slate-700">{sc.label}</td>
+                              <td className="px-4 py-3 text-xs text-slate-500">{sc.shock}%</td>
                               <td className={`px-4 py-3 text-xs font-bold ${sc.nplRatio > 10 ? "text-red-600" : sc.nplRatio > 5 ? "text-amber-600" : "text-emerald-600"}`}>
                                 {sc.nplRatio.toFixed(1)}%
                                 <div className="h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden mt-1">

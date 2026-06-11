@@ -14,7 +14,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Scale, TrendingUp,
   Download, RefreshCw, CheckCircle2, AlertTriangle, Filter, FileDown, Pencil, X, Save, Check, MoreHorizontal,
   Building2, MapPin, Phone, Mail, ScrollText, Users, FileCheck, Briefcase,
-  Banknote, BarChart2, Wallet,
+  Banknote, BarChart2, Wallet, FileText, ArrowLeftRight,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -612,7 +612,7 @@ export default function StatementDetailPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Laporan Laba Rugi</p>
-                <h1 className="text-xl font-bold text-slate-900">{String(pnl?.entity_name ?? stmt.account_holder ?? stmt.original_filename)}</h1>
+                <h1 className="text-xl font-bold text-slate-900">{String(pnl?.company_name ?? stmt.account_holder ?? stmt.original_filename)}</h1>
                 <p className="mt-1 text-sm text-slate-500">{formatDate(stmt.period_start)} – {formatDate(stmt.period_end)} · {String(pnl?.currency ?? "IDR")}</p>
               </div>
               <StatusBadge status={stmt.status} />
@@ -1114,22 +1114,26 @@ export default function StatementDetailPage() {
         )}
 
         <Tabs defaultValue="ringkasan">
-          <TabsList className="mb-6 bg-slate-50 border border-slate-200 p-0.5 rounded-xl">
-            <TabsTrigger value="ringkasan" className="rounded-lg text-slate-500 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+          <TabsList className="mb-6 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+            <TabsTrigger value="ringkasan" className="rounded-lg gap-2 text-slate-500 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 data-[state=active]:shadow-sm data-[state=active]:border-violet-200">
+              <FileText className="h-3.5 w-3.5" />
               Ringkasan
             </TabsTrigger>
-            <TabsTrigger value="transaksi" className="rounded-lg text-slate-500 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+            <TabsTrigger value="transaksi" className="rounded-lg gap-2 text-slate-500 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 data-[state=active]:shadow-sm data-[state=active]:border-violet-200">
+              <ArrowLeftRight className="h-3.5 w-3.5" />
               Transaksi ({txns.length})
             </TabsTrigger>
-            <TabsTrigger value="redflags" className="rounded-lg text-slate-500 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+            <TabsTrigger value="redflags" className="rounded-lg gap-2 text-slate-500 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 data-[state=active]:shadow-sm data-[state=active]:border-violet-200">
+              <AlertTriangle className="h-3.5 w-3.5" />
               Red Flags
               {flags.length > 0 && (
-                <span className="ml-1.5 bg-red-500/80 text-slate-900 text-[10px] rounded-full px-1.5 py-0.5 font-bold">
+                <span className="ml-0.5 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold leading-none">
                   {flags.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="export" className="rounded-lg text-slate-500 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+            <TabsTrigger value="export" className="rounded-lg gap-2 text-slate-500 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 data-[state=active]:shadow-sm data-[state=active]:border-violet-200">
+              <Download className="h-3.5 w-3.5" />
               Export
             </TabsTrigger>
           </TabsList>

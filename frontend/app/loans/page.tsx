@@ -116,18 +116,18 @@ export default function LoansPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-40">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari perusahaan atau fasilitas…"
-              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-lg text-slate-700 outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/20" />
+              className="h-8 w-full pl-8 pr-3 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/20 placeholder:text-slate-400" />
           </div>
           <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400">
+            className="h-8 text-xs border border-slate-200 rounded-lg px-2.5 bg-white text-slate-700 outline-none focus:border-violet-400">
             {FACILITY_FILTERS.map((f) => <option key={f}>{f}</option>)}
           </select>
           <select value={filterKolk} onChange={(e) => setFilterKolk(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400">
+            className="h-8 text-xs border border-slate-200 rounded-lg px-2.5 bg-white text-slate-700 outline-none focus:border-violet-400">
             {KOLK_FILTERS.map((f) => <option key={f}>{f === "Semua" ? "Semua Kol." : `Kol. ${f}`}</option>)}
           </select>
         </div>

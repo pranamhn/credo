@@ -220,6 +220,15 @@ export default function LoanDetailPage() {
                       </select>
                     </div>
                     <div>
+                      <label className="text-[10px] text-slate-500 block mb-1">Kolk Periode Lalu</label>
+                      <select value={loan.previousKolektibilitas ?? ""}
+                        onChange={(e) => save({ ...loan, previousKolektibilitas: e.target.value ? Number(e.target.value) as LoanFacility["kolektibilitas"] : undefined })}
+                        className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400">
+                        <option value="">— Tidak ada</option>
+                        {[1,2,3,4,5].map((k) => <option key={k} value={k}>{k} — {KOLK_META[k].label}</option>)}
+                      </select>
+                    </div>
+                    <div>
                       <label className="text-[10px] text-slate-500 block mb-1">DPD (hari)</label>
                       <input type="number" value={loan.dpd}
                         onChange={(e) => save({ ...loan, dpd: Number(e.target.value) })}

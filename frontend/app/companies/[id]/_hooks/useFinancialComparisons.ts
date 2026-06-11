@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Statement } from "@/lib/api";
-import { getPnlReport, getBalanceSheetReport } from "../_lib/company-detail-helpers";
+import { getPnlReport, getBalanceSheetReport, getCashFlowReport } from "../_lib/company-detail-helpers";
 
 export function useFinancialComparisons(statements: Statement[]) {
   const pnlComparison = useMemo(() => {
@@ -46,7 +46,20 @@ export function useFinancialComparisons(statements: Statement[]) {
       return { key, label, isBold, latestTotal: lt, priorTotal: pr, annualizedTotal, estGrowthPct };
     });
 
-    return { priorLabel, latestLabel, latestMo, rows };
+    // Sparkline: all P&L docs sorted ascending by period_end
+    const allDocs = statements
+      .filter((s) => s.document_type === "profit_loss" && getPnlReport(s))
+      .sort((a, b) => (a.period_end ?? "").localeCompare(b.period_end ?? ""));
+    const sparkline = allDocs.map((d) => {
+      const r = getPnlReport(d)!;
+      return {
+        label: d.period_end?.slice(0, 7) ?? "",
+        revenue: r.summaries?.revenue?.total ?? null,
+        netIncome: r.summaries?.net_income?.total ?? null,
+      };
+    });
+
+    return { priorLabel, latestLabel, latestMo, rows, sparkline };
   }, [statements]);
 
   const bsComparison = useMemo(() => {
@@ -114,6 +127,8 @@ export function useFinancialComparisons(statements: Statement[]) {
     const totalAssets = bsRow("total_assets")?.latestValue ?? null;
     const totalLiabilities = bsRow("total_liabilities")?.latestValue ?? null;
     const totalEquities = bsRow("total_equities")?.latestValue ?? null;
+    const currentAssets = bsRow("current_assets")?.latestValue ?? null;
+    const currentLiabilities = bsRow("current_liabilities")?.latestValue ?? null;
 
     if (revenue === null && totalAssets === null) return null;
 
@@ -130,9 +145,41 @@ export function useFinancialComparisons(statements: Statement[]) {
       dar: pct(totalLiabilities, totalAssets),
       roe: pct(annualNI, totalEquities),
       roa: pct(annualNI, totalAssets),
+      currentRatio: ratio(currentAssets, currentLiabilities),
       isAnnualized: latestMo < 12,
     };
   }, [pnlComparison, bsComparison]);
 
-  return { pnlComparison, bsComparison, derivedRatios };
+  const cfComparison = useMemo(() => {
+    const docs = statements
+      .filter((s) => s.document_type === "cash_flow" && getCashFlowReport(s))
+      .sort((a, b) => (b.period_end ?? "").localeCompare(a.period_end ?? ""));
+    if (!docs.length) return null;
+
+    const latestDoc = docs[0];
+    const latestReport = getCashFlowReport(latestDoc)!;
+    const priorDoc = docs.slice(1).find((d) => (d.period_end?.slice(0, 4) ?? "") < (latestDoc.period_end ?? "").slice(0, 4)) ?? null;
+    const priorReport = priorDoc ? getCashFlowReport(priorDoc) : null;
+
+    const latestLabel = `${latestDoc.period_start?.slice(0, 7)}–${latestDoc.period_end?.slice(0, 7)}`;
+    const priorLabel = priorDoc ? `${priorDoc.period_start?.slice(0, 7)}–${priorDoc.period_end?.slice(0, 7)}` : null;
+
+    const CF_ROWS = [
+      { key: "net_cash_from_operating",  label: "Arus Kas Operasi",    isBold: true },
+      { key: "net_cash_from_investing",  label: "Arus Kas Investasi",   isBold: false },
+      { key: "net_cash_from_financing",  label: "Arus Kas Pendanaan",   isBold: false },
+      { key: "net_cash_change",          label: "Perubahan Kas Bersih", isBold: true },
+    ];
+
+    const rows = CF_ROWS.map(({ key, label, isBold }) => {
+      const lv = latestReport.summaries?.[key] ?? null;
+      const pv = priorReport?.summaries?.[key] ?? null;
+      const growthPct = lv !== null && pv !== null && pv !== 0 ? ((lv - pv) / Math.abs(pv)) * 100 : null;
+      return { key, label, isBold, latestValue: lv as number | null, priorValue: pv as number | null, growthPct };
+    });
+
+    return { latestLabel, priorLabel, rows };
+  }, [statements]);
+
+  return { pnlComparison, bsComparison, cfComparison, derivedRatios };
 }

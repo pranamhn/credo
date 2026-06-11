@@ -7,9 +7,10 @@ import { StatusBadge } from "@/components/statement/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { statementsApi, companiesApi, Statement, CompanySummary } from "@/lib/api";
 import { formatDate, formatIDR } from "@/lib/utils";
+import { computeEWSTier, localData, LoanFacility } from "@/lib/localData";
 import {
   AlertTriangle, ArrowRight, Building2, CloudUpload,
-  FileText, ShieldCheck, Timer, X, AlertCircle,
+  FileText, ShieldCheck, Timer, X, AlertCircle, Bell, Settings2, Eye, EyeOff,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -22,6 +23,24 @@ const DOC_TYPE_LABEL: Record<string, string> = {
   balance_sheet: "Neraca",
   other: "Lainnya",
 };
+
+const WIDGETS = [
+  { id: "kpi",      label: "Briefing Hari Ini" },
+  { id: "health",   label: "Health Score & Distribusi Risiko" },
+  { id: "ews",      label: "Early Warning System" },
+  { id: "todo",     label: "Things To Do" },
+  { id: "activity", label: "Aktivitas Terakhir" },
+] as const;
+
+type WidgetId = (typeof WIDGETS)[number]["id"];
+
+function loadWidgetVisibility(): Record<WidgetId, boolean> {
+  try {
+    const stored = typeof window !== "undefined" ? localStorage.getItem("dashboard_widgets") : null;
+    if (stored) return { ...Object.fromEntries(WIDGETS.map(w => [w.id, true])), ...JSON.parse(stored) } as Record<WidgetId, boolean>;
+  } catch { /* ignore */ }
+  return Object.fromEntries(WIDGETS.map(w => [w.id, true])) as Record<WidgetId, boolean>;
+}
 
 type RiskTier = "High" | "Medium" | "Low";
 function getRiskTier(item: CompanySummary): RiskTier {
@@ -50,6 +69,17 @@ export default function HomePage() {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [periodFilter, setPeriodFilter] = useState<3 | 6 | 12 | 0>(0);
+  const [widgetVisible, setWidgetVisible] = useState<Record<WidgetId, boolean>>(loadWidgetVisibility);
+  const [showWidgetPanel, setShowWidgetPanel] = useState(false);
+
+  const toggleWidget = (id: WidgetId) => {
+    setWidgetVisible((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem("dashboard_widgets", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   useEffect(() => {
     Promise.all([statementsApi.list(), companiesApi.list()])
@@ -57,20 +87,28 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const bankStatements = statements.filter((s) => s.document_type === "bank_statement");
-  const failedList = statements.filter((s) => s.status === "failed");
-  const needsReview = statements.filter((s) => s.status === "needs_review");
-  const done = statements.filter((s) => s.status === "done");
+  const filteredStatements = useMemo(() => {
+    if (!periodFilter) return statements;
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - periodFilter);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return statements.filter((s) => (s.period_end ?? s.period_start ?? s.created_at) >= cutoffStr);
+  }, [statements, periodFilter]);
+
+  const bankStatements = filteredStatements.filter((s) => s.document_type === "bank_statement");
+  const failedList = filteredStatements.filter((s) => s.status === "failed");
+  const needsReview = filteredStatements.filter((s) => s.status === "needs_review");
+  const done = filteredStatements.filter((s) => s.status === "done");
   const recent = useMemo(() =>
-    [...statements].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 6),
-    [statements]
+    [...filteredStatements].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 6),
+    [filteredStatements]
   );
   const todoStatements = useMemo(() =>
-    statements
+    filteredStatements
       .filter((s) => s.status === "failed" || s.status === "needs_review")
       .sort((a, b) => a.created_at.localeCompare(b.created_at))
       .slice(0, 4),
-    [statements]
+    [filteredStatements]
   );
   const showAlert = !alertDismissed && (failedList.length > 0 || needsReview.length > 0);
 
@@ -98,17 +136,89 @@ export default function HomePage() {
 
   const maxFlow = Math.max(totalCredit, totalDebit) || 1;
 
+  const overdueWatchlist = useMemo(() => {
+    if (typeof window === "undefined") return [];
+    const today = new Date().toISOString().slice(0, 10);
+    return localData.getWatchlist().filter((w) => w.targetDate && w.targetDate < today && w.actionPlan);
+  }, []);
+
+  const dscrAlerts = useMemo(() => companies.filter((c) => {
+    const cr = Number(c.total_credit);
+    const db = Number(c.total_debit);
+    return cr > 0 && db / cr > 0.7 && c.bank_statement_count > 0;
+  }), [companies]);
+
+  const covenantBreachLoans = useMemo<LoanFacility[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localData.getLoans().filter((l) => l.covenants.some((c) => c.status === "breach"));
+  }, []);
+
+  const ewsCompanies = useMemo(() => {
+    return companies
+      .map((c) => ({
+        id: c.company.id,
+        name: c.company.name,
+        tier: computeEWSTier(c.failed_uploads, c.document_count, Number(c.total_credit), Number(c.total_debit), c.latest_status ?? undefined),
+        reason: c.failed_uploads > 0 ? `${c.failed_uploads} dokumen gagal parse`
+          : (Number(c.total_credit) - Number(c.total_debit)) < 0 ? "Net flow negatif"
+          : c.latest_status === "needs_review" ? "Butuh review"
+          : "Monitoring",
+      }))
+      .filter((c) => c.tier !== "hijau")
+      .sort((a, b) => (a.tier === "merah" ? -1 : 1) - (b.tier === "merah" ? -1 : 1));
+  }, [companies]);
+
   return (
     <AppShell>
       <div className="space-y-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-1 select-none">Insights</p>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Insights</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Cashflow agregat, distribusi risiko, dan peringkat perusahaan</p>
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Insights</h1>
+              <p className="text-sm text-slate-500 mt-0.5">Cashflow agregat, distribusi risiko, dan peringkat perusahaan</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
+                {([0, 3, 6, 12] as const).map((m) => (
+                  <button key={m} onClick={() => setPeriodFilter(m)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${periodFilter === m ? "bg-violet-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                    {m === 0 ? "Semua" : `${m}B`}
+                  </button>
+                ))}
+              </div>
+              <div className="relative">
+                <button onClick={() => setShowWidgetPanel((p) => !p)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showWidgetPanel ? "border-violet-300 bg-violet-50 text-violet-600" : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-600"}`}
+                  title="Sesuaikan widget">
+                  <Settings2 className="h-3.5 w-3.5" />
+                </button>
+                {showWidgetPanel && (
+                  <div className="absolute right-0 top-9 z-50 w-56 rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-200/60 ring-1 ring-black/5">
+                    <div className="border-b border-slate-100 px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">Tampilkan Widget</p>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {WIDGETS.map((w) => {
+                        const on = widgetVisible[w.id];
+                        return (
+                          <button key={w.id} onClick={() => toggleWidget(w.id)}
+                            className="flex w-full items-center justify-between px-3 py-2.5 text-left text-xs transition-colors hover:bg-slate-50">
+                            <span className={on ? "text-slate-700 font-medium" : "text-slate-400"}>{w.label}</span>
+                            {on ? <Eye className="h-3.5 w-3.5 text-violet-500" /> : <EyeOff className="h-3.5 w-3.5 text-slate-300" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* KPI Strip */}
-        <div>
+        {widgetVisible.kpi && <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-3">Briefing Hari Ini</p>
           {loading ? (
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
@@ -149,10 +259,10 @@ export default function HomePage() {
               />
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Health Score + Risk Distribution + Financial Summary */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        {widgetVisible.health && <div className="grid gap-4 lg:grid-cols-3">
 
           {/* Health Score */}
           <DataCard className="flex flex-col items-center justify-center">
@@ -242,10 +352,42 @@ export default function HomePage() {
               </div>
             )}
           </DataCard>
-        </div>
+        </div>}
+
+        {/* EWS Risk Alert Widget */}
+        {widgetVisible.ews && ewsCompanies.length > 0 && (
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">Early Warning System</p>
+                <p className="mt-0.5 text-xs text-slate-500">{ewsCompanies.filter(c => c.tier === "merah").length} merah · {ewsCompanies.filter(c => c.tier === "kuning").length} kuning</p>
+              </div>
+              <Link href="/watchlist" className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700">
+                Lihat Watchlist <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {ewsCompanies.slice(0, 6).map((c) => (
+                <Link key={c.id} href={`/companies/${c.id}`}
+                  className={`flex items-center gap-3 rounded-xl border p-3.5 transition-all hover:shadow-sm ${c.tier === "merah" ? "border-red-200 bg-red-50/60 hover:bg-red-50" : "border-amber-200 bg-amber-50/60 hover:bg-amber-50"}`}>
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${c.tier === "merah" ? "bg-red-100" : "bg-amber-100"}`}>
+                    <Bell className={`h-4 w-4 ${c.tier === "merah" ? "text-red-600" : "text-amber-600"}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-slate-800">{c.name}</p>
+                    <p className={`text-[11px] ${c.tier === "merah" ? "text-red-600" : "text-amber-600"}`}>{c.reason}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${c.tier === "merah" ? "bg-red-100 text-red-700 ring-red-200" : "bg-amber-100 text-amber-700 ring-amber-200"}`}>
+                    {c.tier.toUpperCase()}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Things To Do */}
-        <div>
+        {widgetVisible.todo && <div>
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">Things To Do Today</p>
@@ -350,13 +492,79 @@ export default function HomePage() {
                     );
                   })
                 )}
+                {overdueWatchlist.length > 0 && (
+                  <div className="border-t border-slate-100">
+                    <div className="px-4 py-2 bg-red-50/60">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-red-600">⏰ Watchlist — Action Plan Terlambat</p>
+                    </div>
+                    {overdueWatchlist.slice(0, 3).map((w) => (
+                      <Link key={w.id} href="/watchlist"
+                        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-red-50/40">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 ring-1 ring-red-100">
+                          <Timer className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-slate-800">{w.companyName}</p>
+                          <p className="truncate text-[11px] text-red-600">Target: {w.targetDate} — {w.actionPlan}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 ring-1 ring-red-200">OVERDUE</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {dscrAlerts.length > 0 && (
+                  <div className="border-t border-slate-100">
+                    <div className="px-4 py-2 bg-orange-50/60">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-orange-600">⚠ DSCR Alert — DSR &gt; 70%</p>
+                    </div>
+                    {dscrAlerts.slice(0, 3).map((c) => {
+                      const dsr = Number(c.total_debit) / Number(c.total_credit);
+                      return (
+                        <Link key={c.company.id} href={`/companies/${c.company.id}`}
+                          className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-orange-50/40">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600 ring-1 ring-orange-100">
+                            <AlertTriangle className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-slate-800">{c.company.name}</p>
+                            <p className="text-[11px] text-orange-600">DSR proxy {(dsr * 100).toFixed(0)}% — arus keluar sangat tinggi</p>
+                          </div>
+                          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+                {covenantBreachLoans.length > 0 && (
+                  <div className="border-t border-slate-100">
+                    <div className="px-4 py-2 bg-rose-50/60">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600">🔴 Covenant Breach Terdeteksi</p>
+                    </div>
+                    {covenantBreachLoans.slice(0, 3).map((l) => {
+                      const breached = l.covenants.filter((c) => c.status === "breach");
+                      return (
+                        <Link key={l.id} href={`/loans/${l.id}`}
+                          className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-rose-50/40">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                            <AlertCircle className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-slate-800">{l.companyName} — {l.facilityName}</p>
+                            <p className="text-[11px] text-rose-600">{breached.length} covenant breach: {breached.map(c => c.description || c.type).join(", ")}</p>
+                          </div>
+                          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </DataCard>
-        </div>
+        </div>}
 
         {/* Activity Feed */}
-        <div>
+        {widgetVisible.activity && <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">Aktivitas Terakhir</p>
             <Link href="/documents" className="text-xs text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1">
@@ -412,7 +620,7 @@ export default function HomePage() {
               </div>
             )}
           </DataCard>
-        </div>
+        </div>}
 
       </div>
     </AppShell>

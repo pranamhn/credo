@@ -9,7 +9,9 @@ from app.api.v1.statements import router as statements_router
 from app.api.v1.slik import router as slik_router
 from app.api.v1.cbi import router as cbi_router
 from app.api.v1.click import router as click_router
+from app.api.v1.audit import router as audit_router
 import app.models.click_report  # noqa: F401 — register model so create_all sees it
+import app.models.covenant  # noqa: F401
 
 
 @asynccontextmanager
@@ -44,6 +46,7 @@ app.include_router(companies_router, prefix="/api/v1")
 app.include_router(slik_router, prefix="/api/v1")
 app.include_router(cbi_router, prefix="/api/v1")
 app.include_router(click_router, prefix="/api/v1")
+app.include_router(audit_router, prefix="/api/v1")
 
 
 @app.get("/health")

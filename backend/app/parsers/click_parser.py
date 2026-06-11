@@ -1,11 +1,13 @@
 """
 CLICK Parser — PT. CRIF Lembaga Informasi Keuangan
-Individual credit report format (not corporate).
+Individual credit report format.
 
-Strategy:
-  Parse subject info, CB score, and contract summary from early pages.
-  Extract each "Detail of Credit / Financing N: Type - Phase" section
-  for per-facility data (provider, dates, interest rate, debit balance).
+The PDF has two sections:
+  1. CONTRACT SUMMARY + compact table (pages 1-8): numbered rows with Provider Name, dates, Col 1/2 history
+  2. Per-contract DETAIL pages (pages 9+): "Detail of Credit / Financing N: Type - Phase" headers
+     with full financial data (credit limit, debit balance, interest rate, worst status, etc.)
+
+We parse the summary for totals and the detail pages for per-facility data.
 """
 from __future__ import annotations
 import re
@@ -16,6 +18,17 @@ from typing import Optional
 import pdfplumber
 
 logger = logging.getLogger(__name__)
+
+# Map English CLICK worst status → numeric kualitas (1-5)
+_KUALITAS_MAP = {
+    "current": "1",
+    "special mention": "2",
+    "substandard": "3",
+    "doubtful": "4",
+    "loss": "5",
+    "paid off": "0",
+    "paid-off": "0",
+}
 
 
 @dataclass
@@ -74,9 +87,10 @@ def _parse_idr(text: str) -> Optional[float]:
         return None
 
 
-def _extract(text: str, pattern: str, group: int = 1) -> str:
-    m = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-    return _clean(m.group(group)) if m else ""
+def _map_kualitas(raw: str) -> str:
+    """Map CLICK English worst-status to numeric kualitas string."""
+    key = raw.strip().lower()
+    return _KUALITAS_MAP.get(key, raw.strip())
 
 
 # ── main entry ─────────────────────────────────────────────────────────────────
@@ -105,98 +119,234 @@ def parse_click_pdf(file_path: str) -> ClickReport:
 # ── section parsers ────────────────────────────────────────────────────────────
 
 def _parse_header(text: str, report: ClickReport) -> None:
-    m = re.search(r"(?:Request\s+Date|CREDIT\s+REPORT\s+CREATED\s+ON)\s*[:\-]?\s*(\d{4}[-/]\d{2}[-/]\d{2})", text, re.IGNORECASE)
+    """Extract report date — normalize slashes to dashes."""
+    m = re.search(
+        r"(?:Request\s+Date|CREDIT\s+REPORT\s+CREATED\s+ON)\s*[:\-]?\s*(\d{4}[/\-]\d{2}[/\-]\d{2})",
+        text, re.IGNORECASE,
+    )
     if m:
-        report.tanggal_laporan = m.group(1)
+        report.tanggal_laporan = m.group(1).replace("/", "-")
 
 
 def _parse_subject(text: str, report: ClickReport) -> None:
+    """
+    Parse subject block. PDF uses a two-row table layout:
+      header row:  Name As Id  Full Name  Mother's Name  Gender
+      value row:   KIRWANTO    KIRWANTO   -              Male
+
+      header row:  Date of Birth  Place of Birth  Marital Status  ...
+      value row:   10-04-1981     TANJUNG KESUMA  MARRIED         ...
+    """
     s = report.subject
 
-    # Subject block follows "Subject Data" header
-    m = re.search(r"Subject\s+Data\s*([\s\S]{0,1500}?)(?:Employment\s+Data|SHAREHOLDER|CB\s+SCORE)", text, re.IGNORECASE)
-    block = m.group(1) if m else text[:2000]
+    # Narrow to subject block
+    m = re.search(
+        r"Subject\s+Data\s*([\s\S]{0,4000}?)(?:Employment\s+Data|SHAREHOLDER|CB\s+SCORE)",
+        text, re.IGNORECASE,
+    )
+    block = m.group(1) if m else text[:4000]
 
-    # Full Name / Name As Id
-    name_m = re.search(r"Full\s+Name\s+([A-Z][A-Z0-9\s]{1,80}?)(?:\n|Mother)", block, re.IGNORECASE)
-    if not name_m:
-        name_m = re.search(r"Name\s+As\s+Id\s+([A-Z][A-Z0-9\s]{1,80}?)(?:\n|Full)", block, re.IGNORECASE)
-    s.nama = _clean(name_m.group(1)) if name_m else ""
+    # Name: "Name As Id Full Name Mother's Name Gender\n{name_as_id} {full_name} - Male"
+    # The subject appears to duplicate name in both columns; take the first word group
+    name_m = re.search(
+        r"Name\s+As\s+Id\s+Full\s+Name[^\n]*\n\s*([A-Z][A-Z\s\-]{1,60}?)\s+-\s+(?:Male|Female)",
+        block, re.IGNORECASE,
+    )
+    if name_m:
+        # Both "Name As Id" and "Full Name" columns usually contain the same name; take unique tokens
+        raw = _clean(name_m.group(1))
+        tokens = raw.split()
+        # Deduplicate consecutive duplicate tokens (e.g., "KIRWANTO KIRWANTO")
+        seen: list[str] = []
+        for tok in tokens:
+            if not seen or tok != seen[-1]:
+                seen.append(tok)
+        s.nama = " ".join(seen)
 
-    # Date of Birth
-    dob_m = re.search(r"Date\s+of\s+Birth\s+(\d{2}-\d{2}-\d{4})", block, re.IGNORECASE)
-    s.tanggal_lahir = dob_m.group(1) if dob_m else ""
+    # Date of Birth + Place of Birth on same value row
+    dob_m = re.search(
+        r"Date\s+of\s+Birth\s+Place\s+of\s+Birth[^\n]*\n\s*(\d{2}-\d{2}-\d{4})\s+([A-Z][A-Z\s\-]{2,50}?)\s+(?:MARRIED|SINGLE|DIVORCED|WIDOW|BELUM|CERAI|-)\b",
+        block, re.IGNORECASE,
+    )
+    if dob_m:
+        s.tanggal_lahir = dob_m.group(1)
+        s.tempat_lahir = _clean(dob_m.group(2))
 
-    # Place of Birth
-    pob_m = re.search(r"Place\s+of\s+Birth\s+([A-Z][A-Z\s]{1,40}?)(?:\n|Marital)", block, re.IGNORECASE)
-    s.tempat_lahir = _clean(pob_m.group(1)) if pob_m else ""
-
-    # Gender
-    gender_m = re.search(r"Gender\s+(Male|Female)", block, re.IGNORECASE)
-    s.jenis_kelamin = gender_m.group(1) if gender_m else ""
+    # Gender from name row
+    gender_m = re.search(r"\b(Male|Female)\b", block, re.IGNORECASE)
+    if gender_m:
+        s.jenis_kelamin = gender_m.group(1)
 
     # ID Card
     id_m = re.search(r"ID\s+CARD\s*[:\s]+(\d{10,20})", text, re.IGNORECASE)
-    s.no_identitas = id_m.group(1) if id_m else ""
+    if id_m:
+        s.no_identitas = id_m.group(1)
 
 
 def _parse_score(text: str, report: ClickReport) -> None:
-    # CB SCORE section: Score NNN  Risk Grade XX
-    score_m = re.search(r"Score\s+(\d{3,4})", text, re.IGNORECASE)
+    """
+    CB SCORE section layout:
+      Score  Risk Grade
+      501    Di
+      High Risk
+    """
+    # Primary: "Score Risk Grade\n{score} {grade_code}\n{grade_desc}"
+    m = re.search(
+        r"Score\s+Risk\s+Grade\s*\n\s*(\d{3,4})\s+(\S+)",
+        text, re.IGNORECASE,
+    )
+    if m:
+        try:
+            report.cb_score = int(m.group(1))
+        except ValueError:
+            pass
+        # Try to get full risk description on next line
+        rest = text[m.end():m.end() + 80]
+        desc_m = re.search(r"((?:Very\s+)?(?:High|Medium|Low|Average)\s+Risk)", rest, re.IGNORECASE)
+        if desc_m:
+            report.risk_grade = _clean(desc_m.group(1))
+        else:
+            report.risk_grade = _clean(m.group(2))
+        return
+
+    # Fallback: simple "Score NNN" pattern
+    score_m = re.search(r"(?<!\w)Score\s+(\d{3,4})(?!\s*\w)", text, re.IGNORECASE)
     if score_m:
         try:
             report.cb_score = int(score_m.group(1))
         except ValueError:
             pass
 
-    grade_m = re.search(r"Risk\s+Grade\s+([A-Z][a-z]?)", text, re.IGNORECASE)
-    report.risk_grade = grade_m.group(1) if grade_m else ""
+    grade_m = re.search(
+        r"((?:Very\s+)?(?:High|Medium|Low|Average)\s+Risk)",
+        text, re.IGNORECASE,
+    )
+    if grade_m:
+        report.risk_grade = _clean(grade_m.group(1))
 
 
 def _parse_summary(text: str, report: ClickReport) -> None:
-    # CONTRACT SUMMARY section
-    m = re.search(r"CONTRACT\s+SUMMARY\s*([\s\S]{0,800}?)(?:CONTRACTS?\s+DETAILS?|Detail\s+of\s+Credit)", text, re.IGNORECASE)
+    """
+    CONTRACT SUMMARY table layout (multi-line headers + value rows):
+
+      Contracts number  Total Credit Limit  Total Potential Exposure
+      Number
+      24                255.353.392         121.076.233
+      17
+
+      Total Debit Balance  Total Overdue  Currency
+      111.076.233          0              Indonesian Rupiah
+    """
+    m = re.search(
+        r"CONTRACT\s+SUMMARY\s*([\s\S]{0,1200}?)(?:CONTRACTS?\s+DETAILS?|Detail\s+of\s+Credit|Financial\s+Summary)",
+        text, re.IGNORECASE,
+    )
     if not m:
         return
     block = m.group(1)
 
-    contracts_m = re.search(r"Contracts\s+number\s+(\d+)", block, re.IGNORECASE)
-    if contracts_m:
+    # Contracts count + credit limit on the same data row
+    # Pattern: "Contracts number {optional more headers}\n{optional Number header}\n{count} {credit_limit} {potential}\n{providers}"
+    ctr_m = re.search(
+        r"Contracts\s+number[^\n]*\n(?:[^\n]*\n)?\s*(\d+)\s+([\d.,]+)\s+([\d.,]+)\s*\n\s*(\d+)",
+        block, re.IGNORECASE,
+    )
+    if ctr_m:
         try:
-            report.jumlah_kontrak = int(contracts_m.group(1))
+            report.jumlah_kontrak = int(ctr_m.group(1))
         except ValueError:
             pass
-
-    providers_m = re.search(r"Reporting\s+Providers\s+Number\s+(\d+)", block, re.IGNORECASE)
-    if providers_m:
+        report.total_credit_limit = _parse_idr(ctr_m.group(2))
         try:
-            report.jumlah_kreditur = int(providers_m.group(1))
+            report.jumlah_kreditur = int(ctr_m.group(4))
         except ValueError:
             pass
+    else:
+        # Fallback: simpler patterns
+        cnt_m = re.search(r"Contracts\s+number\D{0,30}?(\d+)", block, re.IGNORECASE | re.DOTALL)
+        if cnt_m:
+            try:
+                report.jumlah_kontrak = int(cnt_m.group(1))
+            except ValueError:
+                pass
 
-    limit_m = re.search(r"Total\s+Credit\s+Limit\s+([\d.,]+)", block, re.IGNORECASE)
-    if limit_m:
-        report.total_credit_limit = _parse_idr(limit_m.group(1))
+        prov_m = re.search(r"Reporting\s+Providers[^\n]*\n[^\n]*\n\s*\d[^\n]*\n\s*(\d+)", block, re.IGNORECASE)
+        if prov_m:
+            try:
+                report.jumlah_kreditur = int(prov_m.group(1))
+            except ValueError:
+                pass
 
-    balance_m = re.search(r"Total\s+Debit\s+Balance\s+([\d.,]+)", block, re.IGNORECASE)
-    if balance_m:
-        report.total_debit_balance = _parse_idr(balance_m.group(1))
+        lim_m = re.search(r"Total\s+Credit\s+Limit\s+([\d.,]+)", block, re.IGNORECASE)
+        if lim_m:
+            report.total_credit_limit = _parse_idr(lim_m.group(1))
 
-    overdue_m = re.search(r"Total\s+Overdue\s+(\d[\d.,]*)", block, re.IGNORECASE)
-    if overdue_m:
-        report.total_overdue = _parse_idr(overdue_m.group(1))
+    # Debit balance + overdue on same data row
+    # "Total Debit Balance Total Overdue Currency\n{balance} {overdue} Indonesian Rupiah"
+    dbo_m = re.search(
+        r"Total\s+Debit\s+Balance\s+Total\s+Overdue[^\n]*\n\s*([\d.,]+)\s+(\d[\d.,]*)",
+        block, re.IGNORECASE,
+    )
+    if dbo_m:
+        report.total_debit_balance = _parse_idr(dbo_m.group(1))
+        report.total_overdue = _parse_idr(dbo_m.group(2))
+    else:
+        bal_m = re.search(r"Total\s+Debit\s+Balance\s+([\d.,]+)", block, re.IGNORECASE)
+        if bal_m:
+            report.total_debit_balance = _parse_idr(bal_m.group(1))
+        ov_m = re.search(r"Total\s+Overdue\s+(\d[\d.,]*)", block, re.IGNORECASE)
+        if ov_m:
+            report.total_overdue = _parse_idr(ov_m.group(1))
+
+
+def _extract_provider(body: str) -> str:
+    """
+    Extract provider / kreditur name from a contract detail block.
+    Provider names follow the pattern:
+      [Provider Type] PT Something Name  [Contract Code 7+ chars]  [Role]
+    They may wrap across lines, e.g.:
+      Conventional Commercial PT Bank Central Asia  Code No.  Date
+      Bank Tbk J03129858 - -
+    """
+    # Look for PT/BPR/Bank... company name; stop at contract code or keywords.
+    # Use [A-Z]\d{6,} to match contract codes (e.g. "T49286153") only — avoids
+    # false stops on normal words when re.IGNORECASE would make [A-Z0-9]{7,} match
+    # any 7-letter word like "Indonesia", "Central", "Finance".
+    prov_m = re.search(
+        r"\b(PT\.?\s+[A-Z][A-Za-z\s&.,\-]+?)\s+(?:Code\b|[A-Z]\d{6,}|\d{7,}|Borrower\b|Guarantor\b)",
+        body,
+    )
+    if prov_m:
+        name = _clean(prov_m.group(1))
+        # Check if "Tbk" or "Persero" appears in the next ~120 chars (second line continuation)
+        suffix_m = re.search(
+            r"\b(Tbk|Persero|Syariah)\b",
+            body[prov_m.end():prov_m.end() + 120],
+            re.IGNORECASE,
+        )
+        if suffix_m and suffix_m.group(1).lower() not in name.lower():
+            name = name + " " + suffix_m.group(1)
+        return name
+
+    # Fallback: BPR or Bank without PT prefix
+    bpr_m = re.search(
+        r"\b((?:BPR|Bank)\s+[A-Z][A-Za-z\s.&,\-]{3,60}?)\s+(?:[A-Z]\d{6,}|\d{7,}|Borrower\b)",
+        body,
+    )
+    if bpr_m:
+        return _clean(bpr_m.group(1))
+
+    return ""
 
 
 def _parse_contracts(text: str, report: ClickReport) -> None:
     """
-    Split on "Detail of Credit / Financing N: Type - Phase" markers and
-    parse each block independently.
+    Split on "Detail of Credit / Financing N: Type - Phase" markers.
+    Each body contains provider info, dates, credit/debit amounts, interest, worst status.
     """
-    # Split on detail section markers
     splits = re.split(
         r"(Detail\s+of\s+Credit\s*/\s*Financing\s+\d+\s*:[^\n]+)",
-        text,
-        flags=re.IGNORECASE,
+        text, flags=re.IGNORECASE,
     )
 
     # splits[0] = pre-detail text, then alternating [header, body, header, body, ...]
@@ -208,9 +358,8 @@ def _parse_contracts(text: str, report: ClickReport) -> None:
 
         # Parse contract type and phase from header
         hm = re.match(
-            r"Detail\s+of\s+Credit\s*/\s*Financing\s+\d+\s*:\s*(.+?)\s*-\s*(Active|Closed|Paid\s*off|Requested|Refused|Renounced)",
-            header_line,
-            re.IGNORECASE,
+            r"Detail\s+of\s+Credit\s*/\s*Financing\s+\d+\s*:\s*(.+?)\s*-\s*(Active|Closed(?:\s+in\s+Advance)?|Paid[\s\-]?off|Requested|Refused|Renounced)",
+            header_line, re.IGNORECASE,
         )
         if not hm:
             continue
@@ -223,50 +372,68 @@ def _parse_contracts(text: str, report: ClickReport) -> None:
         f.jenis_kredit = jenis
         f.status = "aktif" if is_aktif else "selesai"
 
-        # Provider
-        prov_m = re.search(
-            r"Provider\s*\n([^\n]{3,80})",
-            body,
+        # ── Provider (kreditur) ──────────────────────────────────────────
+        f.kreditur = _extract_provider(body)
+
+        # ── Start Date + Due Date ─────────────────────────────────────────
+        # Layout: "Start Date  Due Date  Past Due Status  ...\n2024-02-16  2024-05-31  ..."
+        dates_m = re.search(
+            r"Start\s+Date\s+Due\s+Date[^\n]*\n\s*(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})",
+            body, re.IGNORECASE,
         )
-        if prov_m:
-            f.kreditur = _clean(prov_m.group(1))
-        # Fallback: "Provider PT Something" on same line
-        if not f.kreditur:
-            prov2_m = re.search(r"Provider\s+(PT\.?\s+[^\n]{3,60}|CV\s+[^\n]{3,60})", body, re.IGNORECASE)
-            if prov2_m:
-                f.kreditur = _clean(prov2_m.group(1))
+        if dates_m:
+            f.tanggal_mulai = dates_m.group(1)
+            f.tanggal_jatuh_tempo = dates_m.group(2)
+        else:
+            # Fallback: pick first two YYYY-MM-DD dates in the body
+            all_dates = re.findall(r"\d{4}-\d{2}-\d{2}", body)
+            if len(all_dates) >= 2:
+                f.tanggal_mulai, f.tanggal_jatuh_tempo = all_dates[0], all_dates[1]
+            elif all_dates:
+                f.tanggal_mulai = all_dates[0]
 
-        # Dates
-        start_m = re.search(r"Start\s+Date\s+(\d{4}-\d{2}-\d{2})", body, re.IGNORECASE)
-        f.tanggal_mulai = start_m.group(1) if start_m else ""
+        # ── Interest Rate ─────────────────────────────────────────────────
+        # "Interest Rates 39.96 %" or "Interest Rate 0 %"
+        rate_m = re.search(r"Interest\s+Rates?\s+([\d.,]+)\s*%", body, re.IGNORECASE)
+        if rate_m:
+            f.bunga = f"{rate_m.group(1)} %"
 
-        due_m = re.search(r"Due\s+Date\s+(\d{4}-\d{2}-\d{2})", body, re.IGNORECASE)
-        f.tanggal_jatuh_tempo = due_m.group(1) if due_m else ""
-
-        # Interest Rate (in Granted Credits section)
-        rate_m = re.search(r"Interest\s+Rate\s+([\d.]+)\s*%", body, re.IGNORECASE)
-        f.bunga = f"{rate_m.group(1)} %" if rate_m else ""
-
-        # Credit Limit / Debit Balance block
+        # ── Credit Limit / Debit Balance block ───────────────────────────
         cldb_m = re.search(
-            r"Credit\s+Limit/Debit\s+Balance\s*([\s\S]{0,400}?)(?:Overdue|Restructuring|$)",
-            body,
-            re.IGNORECASE,
+            r"Credit\s+Limit/Debit\s+Balance\s*([\s\S]{0,500}?)(?:Overdue|Restructuring|$)",
+            body, re.IGNORECASE,
         )
         if cldb_m:
             cldb = cldb_m.group(1)
-            init_m = re.search(r"Initial\s+Credit\s+Limit\s+IDR\s+([\d.,]+)", cldb, re.IGNORECASE)
+            # Initial Credit Limit
+            init_m = re.search(r"Initial\s+Credit\s+Limit\s+(?:IDR\s+)?([\d.,]+)", cldb, re.IGNORECASE)
             if init_m:
                 f.plafon = _parse_idr(init_m.group(1))
 
-            # Debit Balance is last "IDR N" in the block
+            # Debit Balance — "Debit Balance\nIDR 11.204.275" or inline "Debit Balance IDR 11.204.275"
+            # We look for the last occurrence (current debit balance, not historical)
             bal_m = re.findall(r"Debit\s+Balance\s+IDR\s+([\d.,]+)", cldb, re.IGNORECASE)
             if bal_m:
                 f.baki_debet = _parse_idr(bal_m[-1])
 
-        # Worst Status → kualitas
-        ws_m = re.search(r"Worst\s+Status\s+([\w\s()]+?)(?:\n|Worst\s+Status\s+Date)", body, re.IGNORECASE)
-        f.kualitas = _clean(ws_m.group(1)) if ws_m else ("Current" if is_aktif else "Paid off")
+        # ── Worst Status ──────────────────────────────────────────────────
+        # Layout: "Worst Status  Worst Status Date\n- Current  2024-04-30"
+        # or:     "Worst Status  ...\nCurrent  2024-04-30"
+        ws_m = re.search(
+            r"Worst\s+Status\s+Worst\s+Status\s+Date\s*\n\s*[-–]?\s*([A-Za-z][A-Za-z\s]*?)\s+\d{4}-\d{2}-\d{2}",
+            body, re.IGNORECASE,
+        )
+        if ws_m:
+            raw_status = _clean(ws_m.group(1))
+            f.kualitas = _map_kualitas(raw_status) or raw_status
+        else:
+            # Fallback: old pattern
+            ws2_m = re.search(r"Worst\s+Status\s+([\w\s()]+?)(?:\n|Worst\s+Status\s+Date)", body, re.IGNORECASE)
+            if ws2_m:
+                raw_status = _clean(ws2_m.group(1))
+                f.kualitas = _map_kualitas(raw_status) or raw_status
+            else:
+                f.kualitas = "1" if is_aktif else "0"
 
         if is_aktif:
             report.fasilitas_aktif.append(f)

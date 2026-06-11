@@ -6,7 +6,15 @@ import { PageHeader } from "@/components/ui-kit/PageHeader";
 import { DataCard } from "@/components/ui-kit/DataCard";
 import { localData, LoanFacility } from "@/lib/localData";
 import { formatIDR } from "@/lib/utils";
-import { TrendingDown, AlertTriangle, ChevronRight, Building2 } from "lucide-react";
+import { TrendingDown, AlertTriangle, ChevronRight, Building2, ArrowUp, ArrowDown, Minus } from "lucide-react";
+
+const KOLK_SHORT: Record<number, string> = { 1: "L", 2: "DPK", 3: "KL", 4: "D", 5: "M" };
+const CELL_COLOR = (from: number, to: number, count: number) => {
+  if (count === 0) return "bg-slate-50 text-slate-200";
+  if (from === to) return "bg-slate-100 text-slate-600 font-semibold";
+  if (to > from) return "bg-red-100 text-red-700 font-bold";
+  return "bg-emerald-100 text-emerald-700 font-bold";
+};
 
 const KOLK_META: Record<number, { label: string; desc: string; color: string; bg: string; bar: string }> = {
   1: { label: "Kolk 1", desc: "Lancar",     color: "text-emerald-700", bg: "bg-emerald-50",  bar: "bg-emerald-400" },
@@ -66,6 +74,21 @@ export default function NplPage() {
     return loans
       .filter((l) => l.kolektibilitas >= 3)
       .sort((a, b) => b.kolektibilitas - a.kolektibilitas || b.outstanding - a.outstanding);
+  }, [loans]);
+
+  const migrationMatrix = useMemo(() => {
+    const matrix: number[][] = Array.from({ length: 5 }, () => Array(5).fill(0));
+    let hasMigration = false;
+    for (const l of loans) {
+      if (l.previousKolektibilitas) {
+        matrix[l.previousKolektibilitas - 1][l.kolektibilitas - 1]++;
+        hasMigration = true;
+      }
+    }
+    const upgraded = loans.filter(l => l.previousKolektibilitas && l.kolektibilitas < l.previousKolektibilitas).length;
+    const downgraded = loans.filter(l => l.previousKolektibilitas && l.kolektibilitas > l.previousKolektibilitas).length;
+    const stable = loans.filter(l => l.previousKolektibilitas && l.kolektibilitas === l.previousKolektibilitas).length;
+    return { matrix, hasMigration, upgraded, downgraded, stable };
   }, [loans]);
 
   return (
@@ -153,6 +176,70 @@ export default function NplPage() {
               <p className="text-sm text-gray-400 text-center py-4">Belum ada data fasilitas kredit.</p>
             )}
           </div>
+        </DataCard>
+
+        {/* Migration Matrix */}
+        <DataCard>
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-violet-500" />
+              <h2 className="text-sm font-semibold text-gray-800">Migrasi Kolektibilitas</h2>
+              <span className="text-[11px] text-slate-400">periode lalu → sekarang</span>
+            </div>
+            {migrationMatrix.hasMigration && (
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1 text-emerald-600 font-semibold"><ArrowUp className="h-3 w-3" />{migrationMatrix.upgraded} upgrade</span>
+                <span className="flex items-center gap-1 text-red-600 font-semibold"><ArrowDown className="h-3 w-3" />{migrationMatrix.downgraded} downgrade</span>
+                <span className="flex items-center gap-1 text-slate-500"><Minus className="h-3 w-3" />{migrationMatrix.stable} stabil</span>
+              </div>
+            )}
+          </div>
+
+          {!migrationMatrix.hasMigration ? (
+            <div className="px-5 py-8 text-center space-y-1">
+              <p className="text-sm text-slate-400">Belum ada data migrasi.</p>
+              <p className="text-[11px] text-slate-300">Set "Kolk Periode Lalu" di detail fasilitas kredit untuk mulai tracking migrasi.</p>
+            </div>
+          ) : (
+            <div className="px-5 py-4 overflow-x-auto">
+              <table className="text-xs border-collapse">
+                <thead>
+                  <tr>
+                    <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-left">Dari \ Ke →</th>
+                    {[1,2,3,4,5].map((to) => (
+                      <th key={to} className={`px-3 py-2 text-center text-[10px] font-semibold uppercase tracking-widest ${to >= 3 ? "text-red-500" : to === 2 ? "text-amber-500" : "text-emerald-500"}`}>
+                        Kol {to}<br /><span className="normal-case font-normal text-slate-400">{KOLK_SHORT[to]}</span>
+                      </th>
+                    ))}
+                    <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-center">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1,2,3,4,5].map((from) => {
+                    const rowTotal = migrationMatrix.matrix[from-1].reduce((a, b) => a + b, 0);
+                    if (rowTotal === 0) return null;
+                    return (
+                      <tr key={from} className="border-t border-slate-100">
+                        <td className={`px-3 py-2 font-semibold text-[11px] ${from >= 3 ? "text-red-600" : from === 2 ? "text-amber-600" : "text-emerald-600"}`}>
+                          Kol {from} — {KOLK_SHORT[from]}
+                        </td>
+                        {[1,2,3,4,5].map((to) => {
+                          const count = migrationMatrix.matrix[from-1][to-1];
+                          return (
+                            <td key={to} className={`px-3 py-2 text-center rounded text-xs ${CELL_COLOR(from, to, count)}`}>
+                              {count > 0 ? count : "—"}
+                            </td>
+                          );
+                        })}
+                        <td className="px-3 py-2 text-center text-[11px] font-semibold text-slate-500">{rowTotal}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="mt-3 text-[10px] text-slate-300">Hijau = upgrade (membaik) · Merah = downgrade (memburuk) · Abu = stabil</p>
+            </div>
+          )}
         </DataCard>
 
         {/* Tabel NPL Debitur */}

@@ -70,7 +70,7 @@ export default function CompanyDetailPage() {
   } = useTransactionAnalytics(statements);
 
   // ── Financial comparisons ────────────────────────────────────────────────
-  const { pnlComparison, bsComparison, derivedRatios } = useFinancialComparisons(statements);
+  const { pnlComparison, bsComparison, cfComparison, derivedRatios } = useFinancialComparisons(statements);
 
   // ── Derived UI values ────────────────────────────────────────────────────
   const visibleStatements = useMemo(() => {
@@ -164,19 +164,26 @@ export default function CompanyDetailPage() {
   );
 
   const slikDerived = (() => {
-    if (!slikReports.length && !cbiReports.length) return null;
+    if (!slikReports.length && !cbiReports.length && !clickReports.length) return null;
     const slikFas = slikReports.flatMap((r) => r.parsed_data?.fasilitas ?? []);
     const cbiFas = cbiReports.flatMap((r) => r.parsed_data?.fasilitas_aktif ?? []);
+    const clickFas = clickReports.flatMap((r) => r.parsed_data?.fasilitas_aktif ?? []);
     const allKolBaki = [
       ...slikFas.map((f) => ({ kol: parseInt(f.kualitas.replace(/\D/g, ""), 10), baki: f.baki_debet ?? 0 })),
       ...cbiFas.map((f) => ({ kol: parseInt(f.kolektabilitas.replace(/\D/g, ""), 10), baki: f.baki_debet ?? 0 })),
+      ...clickFas.map((f) => ({ kol: parseInt(f.kualitas.replace(/\D/g, ""), 10), baki: f.baki_debet ?? 0 })),
     ];
     if (!allKolBaki.length) return null;
     const worstKol = allKolBaki.reduce((w, f) => (isNaN(f.kol) ? w : Math.max(w, f.kol)), 1);
     const totalBaki = allKolBaki.reduce((s, f) => s + f.baki, 0);
-    const jmlKreditur = (slikReports[0]?.jumlah_kreditur ?? slikFas.length) +
-      (cbiReports[0]?.jumlah_kreditur_aktif ?? 0);
-    const jmlFasilitas = slikFas.length + cbiFas.length;
+    const slikKreditur = slikReports[0]?.jumlah_kreditur
+      ?? (new Set(slikFas.map(f => f.kreditur).filter(Boolean)).size || slikFas.length);
+    const cbiKreditur = cbiReports[0]?.jumlah_kreditur_aktif
+      ?? (new Set(cbiFas.map(f => f.kreditur).filter(Boolean)).size || 0);
+    const clickKreditur = clickReports[0]?.jumlah_kreditur
+      ?? (new Set(clickFas.map(f => f.kreditur).filter(Boolean)).size || 0);
+    const jmlKreditur = slikKreditur + cbiKreditur + clickKreditur;
+    const jmlFasilitas = slikFas.length + cbiFas.length + clickFas.length;
     const bankDocs = statements.filter((s) => s.document_type === "bank_statement" && s.period_start && s.period_end);
     let totalMonths = 1;
     if (bankDocs.length > 0) {
@@ -240,6 +247,9 @@ export default function CompanyDetailPage() {
     creditScore,
     slikDerived,
     approvers,
+    slikReports,
+    cbiReports,
+    interestExpense: Number(summary.interest_expense) || 0,
   });
 
   return (
@@ -318,6 +328,7 @@ export default function CompanyDetailPage() {
               <CreditSummaryTab
                 summary={summary}
                 company={company}
+                companyId={id}
                 profile={profile}
                 memo={memo}
                 rating={rating}
@@ -330,8 +341,10 @@ export default function CompanyDetailPage() {
                 slikDerived={slikDerived}
                 slikReports={slikReports}
                 cbiReports={cbiReports}
+                clickReports={clickReports}
                 pnlComparison={pnlComparison}
                 bsComparison={bsComparison}
+                cfComparison={cfComparison}
                 derivedRatios={derivedRatios}
                 monthlyData={monthlyData}
                 notes={notes}

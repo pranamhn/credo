@@ -116,6 +116,7 @@ export interface LoanFacility {
   startDate: string;
   maturityDate: string;
   kolektibilitas: 1 | 2 | 3 | 4 | 5;
+  previousKolektibilitas?: 1 | 2 | 3 | 4 | 5;
   lastPaymentDate: string;
   dpd: number;
   covenants: Covenant[];
