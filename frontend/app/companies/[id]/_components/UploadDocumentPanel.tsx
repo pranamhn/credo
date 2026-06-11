@@ -26,7 +26,7 @@ export function UploadDocumentPanel({ selectedDocType, onDocTypeSelect }: Props)
                   onClick={() => onDocTypeSelect(type)}
                   className={`flex items-center gap-3 w-full rounded-lg border p-2.5 text-left transition-all ${
                     isActive
-                      ? "border-teal-300 bg-teal-50 text-teal-800 shadow-sm"
+                      ? "border-violet-300 bg-violet-50 text-violet-800 shadow-sm"
                       : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                   }`}
                 >
@@ -35,7 +35,7 @@ export function UploadDocumentPanel({ selectedDocType, onDocTypeSelect }: Props)
                   </div>
                   <div>
                     <p className="text-xs font-semibold">{info.label}</p>
-                    <p className={`text-[10px] ${isActive ? "text-teal-600" : "text-slate-400"}`}>
+                    <p className={`text-[10px] ${isActive ? "text-violet-600" : "text-slate-400"}`}>
                       {type === "bank_statement" ? "Akan diparse transaksinya" : "Disimpan sebagai dokumen"}
                     </p>
                   </div>

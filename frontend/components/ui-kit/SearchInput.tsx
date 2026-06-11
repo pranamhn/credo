@@ -21,7 +21,7 @@ export function SearchInput({ value, onChange, placeholder = "Cari…", classNam
         placeholder={placeholder}
         className={cn(
           "w-full rounded-lg border border-slate-200 bg-white py-2 text-sm text-slate-700 placeholder:text-slate-400",
-          "outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-500/10",
+          "outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/10",
           "transition-all shadow-sm",
           "pl-8",
           shortcut ? "pr-16" : "pr-8"

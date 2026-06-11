@@ -12,15 +12,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const ROUTE_LABELS: Record<string, string> = {
-  companies: "Companies",
-  statements: "Documents",
-  upload: "Upload",
-  analytics: "Analytics",
-  admin: "Settings",
-  "idebt-parser": "iDeb Parser",
-  loans: "Fasilitas Kredit",
-  watchlist: "Watch List",
-  memo: "Memo Kredit",
+  companies:      "Portfolio Debitur",
+  statements:     "Bank Statement",
+  upload:         "Upload Dokumen",
+  analytics:      "Insights",
+  admin:          "Pengaturan",
+  "idebt-parser": "iDEB Parser",
+  loans:          "Fasilitas Kredit",
+  watchlist:      "Watch List",
+  memo:           "Credit Memo",
+  npl:            "NPL Tracker",
 };
 
 interface Notif {
@@ -38,7 +39,7 @@ const MOCK_NOTIFS: Notif[] = [
   { id: "1", title: "Statement gagal diparse", body: "BCA — rekening_jan.pdf tidak dapat dibaca. Coba re-parse.", time: "5 menit lalu", unread: true, icon: AlertTriangle, iconBg: "bg-red-50", iconText: "text-red-500" },
   { id: "2", title: "Parsing selesai", body: "Mandiri — statement_feb.pdf berhasil diparse (243 transaksi).", time: "18 menit lalu", unread: true, icon: CheckCircle2, iconBg: "bg-emerald-50", iconText: "text-emerald-500" },
   { id: "3", title: "Statement perlu review", body: "BNI — saldo akhir tidak sesuai. Delta Rp 450.000.", time: "1 jam lalu", unread: false, icon: AlertTriangle, iconBg: "bg-amber-50", iconText: "text-amber-500" },
-  { id: "4", title: "Perusahaan baru ditambahkan", body: "PT Maju Bersama berhasil dibuat dan siap menerima dokumen.", time: "2 jam lalu", unread: false, icon: Building2, iconBg: "bg-blue-50", iconText: "text-blue-500" },
+  { id: "4", title: "Perusahaan baru ditambahkan", body: "PT Maju Bersama berhasil dibuat dan siap menerima dokumen.", time: "2 jam lalu", unread: false, icon: Building2, iconBg: "bg-violet-50", iconText: "text-violet-500" },
   { id: "5", title: "5 statement diupload", body: "Batch upload selesai — 4 berhasil, 1 gagal.", time: "3 jam lalu", unread: false, icon: FileText, iconBg: "bg-indigo-50", iconText: "text-indigo-500" },
 ];
 
@@ -104,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Left */}
           <div className="flex items-center flex-1 min-w-0 gap-1 pl-6">
             <Link href="/" className="mr-2 shrink-0">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg hover:shadow-md transition-shadow">
+              <div className="bg-gradient-to-r from-violet-600 to-purple-600 p-2 rounded-lg hover:shadow-md transition-shadow">
                 <Shield className="h-4 w-4 text-white" aria-hidden="true" />
               </div>
             </Link>
@@ -165,10 +166,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Search className="h-5 w-5" aria-hidden="true" />
             </button>
 
-            <button className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm text-sm font-medium">
-              <CircleHelp className="h-4 w-4 text-gray-500" aria-hidden="true" />
-              <span className="hidden lg:inline">Help</span>
-              <ChevronDown className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
+            <button
+              className="relative flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+              aria-label="Help"
+            >
+              <CircleHelp className="h-4 w-4" aria-hidden="true" />
             </button>
 
             {/* X6 — Notification bell */}
@@ -194,7 +196,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </div>
                     <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
                       {MOCK_NOTIFS.map((n) => (
-                        <div key={n.id} className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${n.unread ? "bg-blue-50/40" : ""}`}>
+                        <div key={n.id} className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${n.unread ? "bg-violet-50/40" : ""}`}>
                           <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${n.iconBg}`}>
                             <n.icon className={`h-3.5 w-3.5 ${n.iconText}`} />
                           </div>
@@ -203,7 +205,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">{n.body}</p>
                             <p className="text-[10px] text-gray-300 mt-1">{n.time}</p>
                           </div>
-                          {n.unread && <span className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 shrink-0" />}
+                          {n.unread && <span className="mt-1.5 h-2 w-2 rounded-full bg-violet-500 shrink-0" />}
                         </div>
                       ))}
                     </div>
@@ -215,15 +217,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            <button className="flex items-center gap-2 pl-1.5 pr-3 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center shrink-0">
-                <span className="text-xs font-semibold text-white">RM</span>
+            <button className="flex items-center gap-2 h-9 px-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm">
+              <div className="h-6 w-6 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 flex items-center justify-center shrink-0">
+                <span className="text-[10px] font-semibold text-white">RM</span>
               </div>
-              <div className="hidden lg:block text-left min-w-0">
-                <p className="text-sm font-medium text-gray-700 leading-tight truncate max-w-[160px]">Rachmad Mahendra</p>
-                <p className="text-xs text-gray-400">Administrator</p>
-              </div>
-              <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" aria-hidden="true" />
+              <p className="hidden lg:block text-sm font-medium text-gray-700 whitespace-nowrap">Rachmad Mahendra</p>
             </button>
           </div>
         </div>
@@ -246,7 +244,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             fixed inset-y-0 left-0 z-40 pt-14 transition-transform duration-200
             lg:relative lg:z-auto lg:translate-x-0 lg:pt-0
             ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
-            ${!sidebarOpen ? "lg:hidden" : ""}
           `}
         >
           <div className="relative h-full">
@@ -256,7 +253,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <X className="h-4 w-4" />
             </button>
-            <Sidebar onNavigate={() => setMobileOpen(false)} />
+            <Sidebar onNavigate={() => setMobileOpen(false)} collapsed={!sidebarOpen} />
           </div>
         </div>
 

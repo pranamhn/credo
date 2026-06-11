@@ -12,7 +12,7 @@ import { statementsApi, Statement, Transaction, RiskResult, FlagDetail } from "@
 import { formatIDR, formatDate, formatPct } from "@/lib/utils";
 import {
   ArrowDownCircle, ArrowUpCircle, Scale, TrendingUp,
-  Download, RefreshCw, CheckCircle2, AlertTriangle, Filter, FileDown, Pencil, X, Save, Check, MoreHorizontal, ArrowLeft,
+  Download, RefreshCw, CheckCircle2, AlertTriangle, Filter, FileDown, Pencil, X, Save, Check, MoreHorizontal,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -345,13 +345,9 @@ export default function StatementDetailPage() {
   return (
     <AppShell>
       <div className="space-y-6">
-        {/* Back navigation */}
-        <Link href="/statements" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-teal-600 transition-colors font-medium">
-          <ArrowLeft className="h-4 w-4" /> Kembali ke Statements
-        </Link>
         {/* Header card */}
         <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-card p-6 shadow-sm">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent" />
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2.5 mb-2">
@@ -404,7 +400,7 @@ export default function StatementDetailPage() {
 
         {/* Parsing banner */}
         {isParsing && (
-          <div className="flex items-center justify-center gap-3 rounded-xl border border-teal-200 bg-teal-50 p-5 text-sm text-teal-600">
+          <div className="flex items-center justify-center gap-3 rounded-xl border border-violet-200 bg-violet-50 p-5 text-sm text-violet-600">
             <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
             Sedang mem-parsing statement… halaman diperbarui otomatis.
           </div>
@@ -535,7 +531,7 @@ export default function StatementDetailPage() {
                     <select
                       value={categoryFilter}
                       onChange={(e) => setCategoryFilter(e.target.value)}
-                      className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 outline-none focus:border-teal-400 cursor-pointer"
+                      className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 outline-none focus:border-violet-400 cursor-pointer"
                     >
                       {categoriesUpdated.map((c) => (
                         <option key={c} value={c}>{c === "Semua" ? "Semua Kategori" : c.replace(/_/g, " ")}</option>
@@ -625,7 +621,7 @@ export default function StatementDetailPage() {
                                           setLocalCategories((prev) => ({ ...prev, [t.id]: e.target.value }));
                                           setEditingCategoryId(null);
                                         }}
-                                        className="text-[10px] rounded border border-teal-300 bg-white px-1.5 py-0.5 text-slate-700 outline-none"
+                                        className="text-[10px] rounded border border-violet-300 bg-white px-1.5 py-0.5 text-slate-700 outline-none"
                                       >
                                         {categoriesUpdated.filter((c) => c !== "Semua").map((c) => (
                                           <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
@@ -934,7 +930,7 @@ export default function StatementDetailPage() {
               <CheckCircle2 className="h-3.5 w-3.5" /> {reconciling ? "..." : "Rekonsiliasi"}
             </button>
           )}
-          <button onClick={handleExportExcel} className="flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-600">
+          <button onClick={handleExportExcel} className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-600">
             <Download className="h-3.5 w-3.5" /> Export Excel
           </button>
         </div>

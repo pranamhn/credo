@@ -81,7 +81,7 @@ export interface CreditScoreBreakdown {
 
 // ── UI state ─────────────────────────────────────────────────────────────────
 
-export type ActiveTab = "profil" | "ringkasan" | "dokumen" | "grafik" | "memo";
+export type ActiveTab = "profil" | "ringkasan" | "dokumen" | "grafik";
 
 // ── Memo 5C field key types ───────────────────────────────────────────────────
 

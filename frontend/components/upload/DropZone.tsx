@@ -25,7 +25,7 @@ interface FileEntry {
 
 const statusIcon: Record<FileEntry["status"], React.ReactNode> = {
   pending: <Clock className="w-4 h-4 text-slate-400" />,
-  uploading: <Loader2 className="w-4 h-4 text-teal-500 animate-spin" />,
+  uploading: <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />,
   parsing: <FileSearch className="w-4 h-4 text-indigo-500 animate-pulse" />,
   done: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
   error: <AlertCircle className="w-4 h-4 text-red-500" />,
@@ -41,7 +41,7 @@ const stmtStatusCls: Record<StatementStatus, string> = {
 
 const barColor: Record<FileEntry["status"], string> = {
   pending: "bg-slate-300",
-  uploading: "bg-teal-500",
+  uploading: "bg-violet-500",
   parsing: "bg-indigo-500",
   done: "bg-emerald-500",
   error: "bg-red-500",
@@ -271,13 +271,13 @@ export function DropZone({
         className={cn(
           "cursor-pointer rounded-xl border-2 border-dashed py-10 px-6 text-center transition-all duration-200",
           isDragActive
-            ? "border-teal-400 bg-teal-50 shadow-md"
-            : "border-slate-200 bg-slate-50/50 hover:border-teal-300 hover:bg-teal-50/50 hover:shadow-sm"
+            ? "border-violet-400 bg-violet-50 shadow-md"
+            : "border-slate-200 bg-slate-50/50 hover:border-violet-300 hover:bg-violet-50/50 hover:shadow-sm"
         )}
       >
         <input {...getInputProps()} />
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-teal-50 ring-1 ring-teal-200 shadow-sm">
-          <Upload className="h-6 w-6 text-teal-600" />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-violet-50 ring-1 ring-violet-200 shadow-sm">
+          <Upload className="h-6 w-6 text-violet-600" />
         </div>
         <p className="text-base font-semibold text-slate-800">
           {isDragActive ? "Lepas file di sini…" : "Drag & drop atau klik untuk pilih"}
@@ -306,7 +306,7 @@ export function DropZone({
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-medium text-slate-700 truncate">{entry.file.name}</p>
                     {entry.status === "uploading" && (
-                      <span className="text-[11px] text-teal-600 font-semibold">{entry.uploadProgress}%</span>
+                      <span className="text-[11px] text-violet-600 font-semibold">{entry.uploadProgress}%</span>
                     )}
                     {entry.status === "parsing" && (
                       <span className="text-[11px] text-indigo-600 font-semibold">{entry.parseProgress}%</span>

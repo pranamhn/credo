@@ -14,7 +14,7 @@ export function DocumentStatsPanel({
   otherDocumentCount,
 }: Props) {
   const rows: [string, number, string][] = [
-    ["Bank Statement",  bankStatementCount,  "bg-blue-50 text-blue-700"],
+    ["Bank Statement",  bankStatementCount,  "bg-violet-50 text-violet-700"],
     ["Profit & Loss",   profitLossCount,     "bg-emerald-50 text-emerald-700"],
     ["Cash Flow",       cashFlowCount,       "bg-amber-50 text-amber-700"],
     ["Balance Sheet",   balanceSheetCount,   "bg-indigo-50 text-indigo-700"],

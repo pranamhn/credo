@@ -69,11 +69,11 @@ export default function LoansPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-teal-600">Monitoring</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600">Monitoring</p>
             <h1 className="text-xl font-bold text-slate-900">Fasilitas Kredit</h1>
           </div>
           <button onClick={addDemoLoan}
-            className="flex items-center gap-2 bg-teal-500 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-teal-600 transition-all">
+            className="flex items-center gap-2 bg-violet-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-violet-600 transition-all">
             <Plus className="h-3.5 w-3.5" /> Demo Pinjaman
           </button>
         </div>
@@ -82,7 +82,7 @@ export default function LoansPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Total Outstanding",   v: formatIDR(totalOutstanding),    icon: TrendingDown, color: "text-slate-700" },
-            { label: "Total Plafon",        v: formatIDR(totalPlafon),         icon: CheckCircle2, color: "text-teal-700"  },
+            { label: "Total Plafon",        v: formatIDR(totalPlafon),         icon: CheckCircle2, color: "text-violet-700"  },
             { label: "NPL Ratio",           v: `${nplRatio.toFixed(2)}%`,      icon: AlertTriangle, color: nplRatio > 5 ? "text-red-600" : nplRatio > 2 ? "text-amber-600" : "text-emerald-700" },
             { label: "CKPN Provisi",        v: formatIDR(totalCKPN),           icon: XCircle,      color: "text-amber-700" },
           ].map(({ label, v, icon: Icon, color }) => (
@@ -120,14 +120,14 @@ export default function LoansPage() {
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari perusahaan atau fasilitas…"
-              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-lg text-slate-700 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/20" />
+              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-lg text-slate-700 outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/20" />
           </div>
           <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400">
+            className="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400">
             {FACILITY_FILTERS.map((f) => <option key={f}>{f}</option>)}
           </select>
           <select value={filterKolk} onChange={(e) => setFilterKolk(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400">
+            className="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400">
             {KOLK_FILTERS.map((f) => <option key={f}>{f === "Semua" ? "Semua Kol." : `Kol. ${f}`}</option>)}
           </select>
         </div>
@@ -175,7 +175,7 @@ export default function LoansPage() {
                         {daysToMaturity < 90 && <p className="text-[9px]">{daysToMaturity < 0 ? "Lewat jatuh tempo" : `${daysToMaturity}h lagi`}</p>}
                       </td>
                       <td className="px-4 py-3">
-                        <Link href={`/loans/${l.id}`} className="text-teal-600 hover:text-teal-700 font-semibold text-[11px] hover:underline">Detail →</Link>
+                        <Link href={`/loans/${l.id}`} className="text-violet-600 hover:text-violet-700 font-semibold text-[11px] hover:underline">Detail →</Link>
                       </td>
                     </tr>
                   );

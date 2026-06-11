@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader, EmptyState, GlowButton, DataCard, Pagination } from "@/components/ui-kit";
+import { PageHeader, EmptyState, GlowButton, DataCard, Pagination, StatCard } from "@/components/ui-kit";
 import { StatusBadge } from "@/components/statement/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { statementsApi, Statement } from "@/lib/api";
@@ -16,47 +16,6 @@ import { toast } from "sonner";
 
 const PAGE_SIZE = 10;
 
-type SummaryTone = "slate" | "amber" | "emerald" | "rose";
-const summaryTone: Record<SummaryTone, { box: string; icon: string; value: string }> = {
-  slate: { box: "bg-slate-100 text-slate-600", icon: "text-slate-700", value: "text-slate-900" },
-  amber: { box: "bg-amber-100 text-amber-700", icon: "text-amber-700", value: "text-amber-800" },
-  emerald: { box: "bg-emerald-100 text-emerald-700", icon: "text-emerald-700", value: "text-emerald-800" },
-  rose: { box: "bg-red-100 text-red-600", icon: "text-red-700", value: "text-red-700" },
-};
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  tone: SummaryTone;
-}) {
-  const p = summaryTone[tone];
-  return (
-    <div className="group relative flex min-h-[128px] flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:border-teal-300 hover:shadow-md">
-      <div className="absolute left-6 right-6 top-0 h-[2px] bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-current/20 transition-colors group-hover:bg-teal-100 ${p.box}`}>
-            <span className={p.icon}>{icon}</span>
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 transition-colors group-hover:text-teal-700">{label}</p>
-            <p className="mt-0.5 text-[11px] text-slate-500">total keseluruhan</p>
-          </div>
-        </div>
-        <span className="shrink-0 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-bold text-teal-700 ring-1 ring-teal-200">Live</span>
-      </div>
-      <div className="mt-4 rounded-lg bg-slate-50 px-3 py-3">
-        <p className={`truncate text-xl font-bold leading-none ${p.value}`} title={String(value)}>{value}</p>
-      </div>
-    </div>
-  );
-}
 
 function pct(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -300,10 +259,10 @@ export default function StatementsPage() {
         {/* Stats */}
         {!loading && statements.length > 0 && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard icon={<FileText className="h-[22px] w-[22px]" />} value={statements.length} label="Total Upload" tone="slate" />
-            <SummaryCard icon={<FileStack className="h-[22px] w-[22px]" />} value={totalPagesParsed} label="Total Page Pharsed" tone="amber" />
-            <SummaryCard icon={<AlertTriangle className="h-[22px] w-[22px]" />} value={totalAnomalies} label="Total Flag Anomali" tone="rose" />
-            <SummaryCard icon={<ShieldCheck className="h-[22px] w-[22px]" />} value={averageConfidence} label="Average Confident" tone="emerald" />
+            <StatCard icon={<FileText className="h-4 w-4" />} value={statements.length} label="Total Upload" color="default" subtitle="Total semua dokumen" />
+            <StatCard icon={<FileStack className="h-4 w-4" />} value={totalPagesParsed} label="Total Halaman Di-parse" color="amber" subtitle="Akumulasi seluruh statement" />
+            <StatCard icon={<AlertTriangle className="h-4 w-4" />} value={totalAnomalies} label="Total Flag Anomali" color="red" subtitle="Transaksi terdeteksi anomali" />
+            <StatCard icon={<ShieldCheck className="h-4 w-4" />} value={averageConfidence} label="Rata-rata Confidence" color="emerald" subtitle="Akurasi parsing AI" />
           </div>
         )}
 
@@ -319,9 +278,8 @@ export default function StatementsPage() {
             action={<GlowButton variant="primary" icon={<Plus className="h-4 w-4" />} href="/upload">Upload sekarang</GlowButton>}
           />
         ) : (
-          <div>
-            <DataCard padding="flush" className="overflow-hidden">
-              <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-4 py-3 sm:px-5">
+          <DataCard padding="flush" className="overflow-hidden">
+              <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-5 py-3">
                 <div className="flex flex-col justify-between gap-3 xl:flex-row xl:items-center">
                   <div className="flex min-w-0 items-center gap-3">
                     <h2 className="text-xl font-bold text-gray-900">Statement List</h2>
@@ -488,7 +446,7 @@ export default function StatementsPage() {
                     <tr>
                       <th className="pl-4 py-3 w-8">
                         <input type="checkbox" checked={allPageSelected} onChange={toggleAll}
-                          className="rounded border-slate-300 accent-teal-600" />
+                          className="rounded border-slate-300 accent-violet-600" />
                       </th>
                       {["Bank / File", "Nasabah", "Periode", "Saldo Akhir", "Confidence", "Flag Anomali", "Status", "Analis"].map((h) => (
                         <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-500">{h}</th>
@@ -505,10 +463,10 @@ export default function StatementsPage() {
                       </tr>
                     ) : paginated.map((s) => (
                       <tr key={s.id}
-                        className={`border-b border-slate-100 hover:bg-slate-50 group transition-colors ${selected.has(s.id) ? "bg-blue-50/40" : ""}`}>
+                        className={`border-b border-slate-100 hover:bg-slate-50 group transition-colors ${selected.has(s.id) ? "bg-violet-50/40" : ""}`}>
                         <td className="pl-4 py-3.5">
                           <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleRow(s.id)}
-                            className="rounded border-slate-300 accent-teal-500" />
+                            className="rounded border-slate-300 accent-violet-500" />
                         </td>
                         <td className="px-4 py-3.5">
                           <p className="font-semibold text-xs text-slate-900 leading-tight truncate max-w-[160px]">{s.bank_name || s.bank_code || "—"}</p>
@@ -616,13 +574,12 @@ export default function StatementsPage() {
                 </table>
               </div>
               {filtered.length > PAGE_SIZE && (
-                <div className="px-4 py-2.5 border-t border-slate-100">
+                <div className="px-5 py-2.5 border-t border-slate-100">
                   <Pagination page={page} totalPages={totalPages} totalItems={filtered.length}
                     pageSize={PAGE_SIZE} onPageChange={(p) => { setPage(p); setSelected(new Set()); }} />
                 </div>
               )}
             </DataCard>
-          </div>
         )}
       </div>
     </AppShell>

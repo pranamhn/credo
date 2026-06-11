@@ -8,8 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { DocumentType, Statement } from "@/lib/api";
 import { computeEWSTier } from "@/lib/localData";
 import {
-  ArrowLeft, Building2, AlertTriangle,
-  FolderOpen, PencilLine, ShieldCheck, BarChart3,
+  Building2, AlertTriangle,
+  FolderOpen, ShieldCheck, BarChart3,
 } from "lucide-react";
 import { RATING_META } from "./_lib/company-detail-constants";
 import type { ActiveTab } from "./_lib/company-detail-types";
@@ -22,7 +22,6 @@ import { DocumentStatsPanel } from "./_components/DocumentStatsPanel";
 import { ProfileTab } from "./_components/ProfileTab";
 import { CreditSummaryTab } from "./_components/CreditSummaryTab";
 import { DocumentsTab } from "./_components/DocumentsTab";
-import { CreditMemoTab } from "./_components/CreditMemoTab";
 import { TrendAnalysisTab } from "./_components/TrendAnalysisTab";
 import { UploadDocumentModal } from "./_components/UploadDocumentModal";
 import { FinancialDocumentModal } from "./_components/FinancialDocumentModal";
@@ -55,13 +54,11 @@ export default function CompanyDetailPage() {
   const {
     mounted, notes, memo, profile, legalDocs, legalUploading,
     scoringAspects, debtEntries, dscrCicilanBaru, approvers,
-    saveNotes, setMemoField, setProfileField, saveProfile,
+    saveNotes, setProfileField, saveProfile,
     handleLegalDocUpload, removeLegalDoc,
     updateScoringAspect,
     addDebtEntry, updateDebtEntry, removeDebtEntry, updateDscrCicilanBaru,
     updateApprover,
-    addCollateral, updateCollateral, removeCollateral,
-    saveMemo,
   } = useCompanyLocalState(id);
 
   // ── Transaction analytics + chart data ──────────────────────────────────
@@ -125,11 +122,11 @@ export default function CompanyDetailPage() {
         <p className="text-sm text-slate-400 mt-1 mb-4">Pastikan ID perusahaan benar atau koneksi backend aktif.</p>
         <div className="flex items-center justify-center gap-3">
           <button onClick={fetchData}
-            className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 transition-colors">
+            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors">
             Coba lagi
           </button>
-          <Link href="/companies" className="inline-flex items-center gap-2 text-sm text-teal-600 hover:text-teal-500 font-medium">
-            <ArrowLeft className="h-4 w-4" /> Kembali
+          <Link href="/companies" className="text-sm text-violet-600 hover:text-violet-500 font-medium">
+            Kembali ke Portfolio
           </Link>
         </div>
       </div>
@@ -209,11 +206,10 @@ export default function CompanyDetailPage() {
     active: string;
     idle: string;
   }[] = [
-    { key: "ringkasan", label: "Ringkasan Kredit",   helper: "Rating risiko, faktor risiko, dan catatan analis",    icon: ShieldCheck, active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200", idle: "bg-emerald-50 text-emerald-600" },
-    { key: "profil",    label: "Profil Perusahaan",  helper: "Identitas, legalitas, dan ringkasan eksekutif",       icon: Building2,   active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200", idle: "bg-violet-50 text-violet-600" },
-    { key: "dokumen",   label: "Dokumen",            helper: "Upload, kalender dokumen, dan hasil parsing",          icon: FolderOpen,  active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200", idle: "bg-blue-50 text-blue-600" },
-    { key: "grafik",    label: "Analisis Tren",      helper: "Grafik mutasi, saldo, dan tren keuangan",             icon: BarChart3,   active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200", idle: "bg-indigo-50 text-indigo-600" },
-    { key: "memo",      label: "Analisa 5C",         helper: "Fasilitas, 5C, sumber pembayaran, dan status",        icon: PencilLine,  active: "bg-teal-50 text-teal-700 ring-1 ring-teal-200", idle: "bg-amber-50 text-amber-600" },
+    { key: "ringkasan", label: "Ringkasan Kredit",   helper: "Rating risiko, faktor risiko, dan catatan analis",    icon: ShieldCheck, active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-emerald-50 text-emerald-600" },
+    { key: "profil",    label: "Profil Perusahaan",  helper: "Identitas, legalitas, dan ringkasan eksekutif",       icon: Building2,   active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-violet-50 text-violet-600" },
+    { key: "dokumen",   label: "Dokumen",            helper: "Upload, kalender dokumen, dan hasil parsing",          icon: FolderOpen,  active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-violet-50 text-violet-600" },
+    { key: "grafik",    label: "Analisis Tren",      helper: "Grafik mutasi, saldo, dan tren keuangan",             icon: BarChart3,   active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-indigo-50 text-indigo-600" },
   ];
 
   const printSummary = () => handlePrint(summary, rating, notes, netFlow, profile, memo, {
@@ -271,6 +267,7 @@ export default function CompanyDetailPage() {
               tabs={TABS}
               activeTab={activeTab}
               onTabChange={setActiveTab}
+              companyId={id}
             />
             <UploadDocumentPanel
               selectedDocType={selectedDocType}
@@ -360,18 +357,6 @@ export default function CompanyDetailPage() {
                 fetchData={fetchData}
                 openUploadModal={openUploadModal}
                 setSelectedPnlDoc={setSelectedPnlDoc}
-              />
-            )}
-
-            {activeTab === "memo" && (
-              <CreditMemoTab
-                company={company}
-                memo={memo}
-                setMemoField={setMemoField}
-                saveMemo={saveMemo}
-                addCollateral={addCollateral}
-                updateCollateral={updateCollateral}
-                removeCollateral={removeCollateral}
               />
             )}
 

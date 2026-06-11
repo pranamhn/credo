@@ -115,19 +115,19 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 key={item.id}
                 onClick={() => navigate(item)}
                 onMouseEnter={() => setActiveIdx(idx)}
-                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${idx === activeIdx ? "bg-teal-50" : "hover:bg-slate-50"
+                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${idx === activeIdx ? "bg-violet-50" : "hover:bg-slate-50"
                   }`}
               >
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${idx === activeIdx
-                    ? "bg-teal-600 text-white"
+                    ? "bg-violet-600 text-white"
                     : "bg-slate-100 text-slate-500"
                     }`}
                 >
                   {item.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${idx === activeIdx ? "text-teal-700" : "text-slate-900"}`}>
+                  <p className={`text-sm font-semibold ${idx === activeIdx ? "text-violet-700" : "text-slate-900"}`}>
                     {item.label}
                   </p>
                   <p className="text-xs text-slate-500 truncate">{item.description}</p>
@@ -138,7 +138,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   </kbd>
                 )}
                 {idx === activeIdx && (
-                  <ArrowRight className="h-3.5 w-3.5 text-teal-500 shrink-0" />
+                  <ArrowRight className="h-3.5 w-3.5 text-violet-500 shrink-0" />
                 )}
               </button>
             ))

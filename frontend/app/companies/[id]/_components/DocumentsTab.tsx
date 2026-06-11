@@ -54,7 +54,7 @@ export function DocumentsTab({
           <button
             type="button"
             onClick={() => openUploadModal(documentFilter)}
-            className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-teal-700"
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-violet-700"
           >
             <Upload className="h-3.5 w-3.5" />
             Upload {docTypeInfo[documentFilter].label}
@@ -72,17 +72,17 @@ export function DocumentsTab({
           <button
             onClick={() => setDocumentFilter("all")}
             className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-              documentFilter === "all" ? "bg-white text-teal-700 ring-1 ring-teal-200 shadow-sm" : "text-slate-400 hover:text-slate-600"
+              documentFilter === "all" ? "bg-white text-violet-700 ring-1 ring-violet-200 shadow-sm" : "text-slate-400 hover:text-slate-600"
             }`}
           >
             Semua
           </button>
           <button onClick={() => setDocView("kalender")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${docView === "kalender" ? "bg-white text-teal-700 ring-1 ring-teal-200 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${docView === "kalender" ? "bg-white text-violet-700 ring-1 ring-violet-200 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
             <CalendarDays className="h-3 w-3" /> Kalender
           </button>
           <button onClick={() => setDocView("tabel")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${docView === "tabel" ? "bg-white text-teal-700 ring-1 ring-teal-200 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${docView === "tabel" ? "bg-white text-violet-700 ring-1 ring-violet-200 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
             <List className="h-3 w-3" /> Tabel
           </button>
         </div>
@@ -91,7 +91,7 @@ export function DocumentsTab({
             <button
               type="button"
               onClick={() => openUploadModal(documentFilter)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-teal-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-violet-700"
             >
               <Upload className="h-3.5 w-3.5" />
               Upload
@@ -119,7 +119,7 @@ export function DocumentsTab({
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mr-1">Tahun</p>
                 {calYears.map((y) => (
                   <button key={y} onClick={() => setCalYear(y)}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${calYear === y ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200" : "text-slate-500 hover:bg-slate-100"}`}>
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${calYear === y ? "bg-violet-50 text-violet-700 ring-1 ring-violet-200" : "text-slate-500 hover:bg-slate-100"}`}>
                     {y}
                   </button>
                 ))}
@@ -130,7 +130,7 @@ export function DocumentsTab({
                   {/* Coverage summary */}
                   <div className="flex items-center gap-4 text-[11px] text-slate-500">
                     <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-teal-500 shrink-0" />
+                      <span className="h-2 w-2 rounded-full bg-violet-600 shrink-0" />
                       {Object.keys(byYearMonth[calYear] ?? {}).length} bulan terupload
                     </span>
                     <span className="flex items-center gap-1.5">
@@ -145,8 +145,8 @@ export function DocumentsTab({
                       const docs = byYearMonth[calYear]?.[mIdx] ?? [];
                       const hasDocs = docs.length > 0;
                       return (
-                        <div key={mIdx} className={`rounded-xl border p-3 min-h-[88px] flex flex-col transition-all ${hasDocs ? "border-teal-200 bg-teal-50/70" : "border-dashed border-slate-200 bg-slate-50/30"}`}>
-                          <p className={`text-[10px] font-bold uppercase mb-2 ${hasDocs ? "text-teal-700" : "text-slate-300"}`}>
+                        <div key={mIdx} className={`rounded-xl border p-3 min-h-[88px] flex flex-col transition-all ${hasDocs ? "border-violet-200 bg-violet-50/70" : "border-dashed border-slate-200 bg-slate-50/30"}`}>
+                          <p className={`text-[10px] font-bold uppercase mb-2 ${hasDocs ? "text-violet-700" : "text-slate-300"}`}>
                             {monthLabel}
                           </p>
                           {hasDocs ? (
@@ -154,7 +154,7 @@ export function DocumentsTab({
                               {docs.slice(0, 2).map((doc) => (
                                 <div key={doc.id} className="min-w-0">
                                   {doc.document_type === "bank_statement" && (doc.status === "done" || doc.status === "needs_review") ? (
-                                    <Link href={`/statements/${doc.id}`} className="block text-[9px] font-semibold text-teal-800 hover:text-teal-600 truncate leading-tight" title={doc.original_filename}>
+                                    <Link href={`/statements/${doc.id}`} className="block text-[9px] font-semibold text-violet-800 hover:text-violet-600 truncate leading-tight" title={doc.original_filename}>
                                       {doc.original_filename.replace(/\.pdf$/i, "").slice(0, 14)}
                                     </Link>
                                   ) : (
@@ -166,7 +166,7 @@ export function DocumentsTab({
                                 </div>
                               ))}
                               {docs.length > 2 && (
-                                <p className="text-[9px] text-teal-600 font-medium">+{docs.length - 2} lainnya</p>
+                                <p className="text-[9px] text-violet-600 font-medium">+{docs.length - 2} lainnya</p>
                               )}
                             </div>
                           ) : (
@@ -291,7 +291,7 @@ export function DocumentsTab({
                       <div className="flex items-center justify-center gap-2">
                         {doc.document_type === "bank_statement" && (doc.status === "done" || doc.status === "needs_review") && (
                           <Link href={`/statements/${doc.id}`}
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:border-teal-200 hover:text-teal-600 transition-all">
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:border-violet-200 hover:text-violet-600 transition-all">
                             Analisis
                           </Link>
                         )}

@@ -9,7 +9,7 @@ import {
   localData, CreditMemo, Collateral,
 } from "@/lib/localData";
 import {
-  ArrowLeft, Save, Plus, Trash2, CheckCircle2, Clock, AlertTriangle,
+  Save, Plus, Trash2, CheckCircle2, Clock, AlertTriangle,
   FileText, Shield, User, TrendingUp, Globe, Building,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -46,7 +46,7 @@ const COLLATERAL_TYPES = ["Properti", "Kendaraan", "Piutang", "Persediaan", "Gar
 
 const STATUS_META: Record<CreditMemo["status"], { label: string; color: string; icon: React.ReactNode }> = {
   draft:     { label: "Draft",      color: "bg-slate-100 text-slate-600",   icon: <FileText className="h-3 w-3" /> },
-  diajukan:  { label: "Diajukan",   color: "bg-blue-100 text-blue-700",     icon: <Clock className="h-3 w-3" /> },
+  diajukan:  { label: "Diajukan",   color: "bg-blue-100 text-violet-700",     icon: <Clock className="h-3 w-3" /> },
   review:    { label: "Review",     color: "bg-amber-100 text-amber-700",   icon: <Clock className="h-3 w-3" /> },
   komite:    { label: "Komite",     color: "bg-purple-100 text-purple-700", icon: <Clock className="h-3 w-3" /> },
   disetujui: { label: "Disetujui",  color: "bg-emerald-100 text-emerald-700", icon: <CheckCircle2 className="h-3 w-3" /> },
@@ -65,8 +65,8 @@ function ScoreInput({ label, icon: Icon, value, notes, onScore, onNotes, descrip
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex items-start gap-3 mb-3">
-        <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
-          <Icon className="h-4 w-4 text-teal-600" />
+        <div className="h-8 w-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+          <Icon className="h-4 w-4 text-violet-600" />
         </div>
         <div>
           <p className="text-sm font-bold text-slate-800">{label}</p>
@@ -76,7 +76,7 @@ function ScoreInput({ label, icon: Icon, value, notes, onScore, onNotes, descrip
       <div className="flex items-center gap-2 mb-3">
         {[1, 2, 3, 4, 5].map((s) => (
           <button key={s} onClick={() => onScore(s)}
-            className={`h-9 w-9 rounded-lg font-bold text-sm transition-all border-2 ${value === s ? "border-teal-400 bg-teal-50 text-teal-700" : "border-slate-200 text-slate-400 hover:border-slate-300"}`}>
+            className={`h-9 w-9 rounded-lg font-bold text-sm transition-all border-2 ${value === s ? "border-violet-400 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-400 hover:border-slate-300"}`}>
             {s}
           </button>
         ))}
@@ -84,7 +84,7 @@ function ScoreInput({ label, icon: Icon, value, notes, onScore, onNotes, descrip
       </div>
       <textarea value={notes} onChange={(e) => onNotes(e.target.value)} rows={2}
         placeholder="Catatan analisis..."
-        className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400/20 resize-none placeholder:text-slate-300" />
+        className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/20 resize-none placeholder:text-slate-300" />
     </div>
   );
 }
@@ -125,7 +125,7 @@ export default function MemoPage() {
 
   const avg5CScore = ((memo.characterScore + memo.capacityScore + memo.capitalScore + memo.collateralScore + memo.conditionScore) / 5);
   const overallGrade = avg5CScore >= 4.5 ? "AAA" : avg5CScore >= 4 ? "AA" : avg5CScore >= 3.5 ? "A" : avg5CScore >= 3 ? "BBB" : avg5CScore >= 2.5 ? "BB" : avg5CScore >= 2 ? "B" : "CCC";
-  const gradeColor = ["AAA","AA","A"].includes(overallGrade) ? "text-emerald-700" : overallGrade === "BBB" ? "text-teal-700" : ["BB","B"].includes(overallGrade) ? "text-amber-700" : "text-red-700";
+  const gradeColor = ["AAA","AA","A"].includes(overallGrade) ? "text-emerald-700" : overallGrade === "BBB" ? "text-violet-700" : ["BB","B"].includes(overallGrade) ? "text-amber-700" : "text-red-700";
 
   const exceedsBMPK = memo.loanAmount > BMPK_LIMIT;
   const statusMeta = STATUS_META[memo.status];
@@ -143,11 +143,8 @@ export default function MemoPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link href={`/companies/${id}`} className="text-slate-400 hover:text-teal-600 transition-colors">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-teal-600">Memo Kredit</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600">Memo Kredit</p>
               <h1 className="text-xl font-bold text-slate-900">{companyName || "…"}</h1>
             </div>
           </div>
@@ -155,7 +152,7 @@ export default function MemoPage() {
             <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${statusMeta.color}`}>
               {statusMeta.icon} {statusMeta.label}
             </span>
-            <button onClick={() => save()} className="flex items-center gap-2 bg-teal-500 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-teal-600 transition-all">
+            <button onClick={() => save()} className="flex items-center gap-2 bg-violet-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-violet-600 transition-all">
               <Save className="h-3.5 w-3.5" /> Simpan
             </button>
           </div>
@@ -188,7 +185,7 @@ export default function MemoPage() {
           <div className="border-b border-slate-100 px-4 py-3 flex items-center gap-1">
             {TABS.map((t) => (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab === t.key ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200" : "text-slate-500 hover:bg-slate-50"}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab === t.key ? "bg-violet-50 text-violet-700 ring-1 ring-violet-200" : "text-slate-500 hover:bg-slate-50"}`}>
                 {t.label}
               </button>
             ))}
@@ -200,16 +197,16 @@ export default function MemoPage() {
               <div className="space-y-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Detail Fasilitas</p>
                 {[
-                  { label: "Tujuan Kredit", node: <textarea value={memo.loanPurpose} onChange={(e) => set("loanPurpose", e.target.value)} rows={2} placeholder="Deskripsikan tujuan penggunaan kredit…" className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 resize-none placeholder:text-slate-300" /> },
+                  { label: "Tujuan Kredit", node: <textarea value={memo.loanPurpose} onChange={(e) => set("loanPurpose", e.target.value)} rows={2} placeholder="Deskripsikan tujuan penggunaan kredit…" className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 resize-none placeholder:text-slate-300" /> },
                   { label: "Jenis Fasilitas", node: (
                     <select value={memo.facilityType} onChange={(e) => set("facilityType", e.target.value)}
-                      className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400">
+                      className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400">
                       {FACILITY_TYPES.map((f) => <option key={f}>{f}</option>)}
                     </select>
                   )},
-                  { label: "Plafon (Rp)", node: <input type="number" value={memo.loanAmount || ""} onChange={(e) => set("loanAmount", Number(e.target.value))} placeholder="0" className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 tabular-nums" /> },
-                  { label: "Tenor (bulan)", node: <input type="number" value={memo.tenor} onChange={(e) => set("tenor", Number(e.target.value))} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /> },
-                  { label: "Suku Bunga (% p.a.)", node: <input type="number" value={memo.proposedRate} onChange={(e) => set("proposedRate", Number(e.target.value))} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" step="0.1" /> },
+                  { label: "Plafon (Rp)", node: <input type="number" value={memo.loanAmount || ""} onChange={(e) => set("loanAmount", Number(e.target.value))} placeholder="0" className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 tabular-nums" /> },
+                  { label: "Tenor (bulan)", node: <input type="number" value={memo.tenor} onChange={(e) => set("tenor", Number(e.target.value))} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /> },
+                  { label: "Suku Bunga (% p.a.)", node: <input type="number" value={memo.proposedRate} onChange={(e) => set("proposedRate", Number(e.target.value))} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" step="0.1" /> },
                 ].map(({ label, node }) => (
                   <div key={label}>
                     <label className="text-[10px] font-semibold text-slate-500 block mb-1">{label}</label>
@@ -223,13 +220,13 @@ export default function MemoPage() {
                   <label className="text-[10px] font-semibold text-slate-500 block mb-1">Sumber Pelunasan</label>
                   <textarea value={memo.repaymentSource} onChange={(e) => set("repaymentSource", e.target.value)} rows={3}
                     placeholder="Pendapatan operasional, refinancing, dll."
-                    className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 resize-none placeholder:text-slate-300" />
+                    className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 resize-none placeholder:text-slate-300" />
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold text-slate-500 block mb-1">Syarat & Kondisi Khusus</label>
                   <textarea value={memo.conditions} onChange={(e) => set("conditions", e.target.value)} rows={5}
                     placeholder="Syarat pencairan, covenant, dll."
-                    className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 resize-none placeholder:text-slate-300" />
+                    className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 resize-none placeholder:text-slate-300" />
                 </div>
                 <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
                   <p className="text-[10px] font-semibold text-slate-400 mb-2">Simulasi Cicilan (anuitas)</p>
@@ -239,7 +236,7 @@ export default function MemoPage() {
                     const cicilan = memo.loanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
                     return (
                       <div className="space-y-1">
-                        <div className="flex justify-between text-xs"><span className="text-slate-500">Cicilan/bulan</span><span className="font-bold text-teal-700">{formatIDR(cicilan)}</span></div>
+                        <div className="flex justify-between text-xs"><span className="text-slate-500">Cicilan/bulan</span><span className="font-bold text-violet-700">{formatIDR(cicilan)}</span></div>
                         <div className="flex justify-between text-xs"><span className="text-slate-500">Total bunga</span><span className="text-slate-700">{formatIDR(cicilan * n - memo.loanAmount)}</span></div>
                         <div className="flex justify-between text-xs"><span className="text-slate-500">Total pembayaran</span><span className="text-slate-700">{formatIDR(cicilan * n)}</span></div>
                       </div>
@@ -302,7 +299,7 @@ export default function MemoPage() {
                     <div key={label} className="flex items-center gap-3">
                       <span className="text-xs text-slate-500 w-20 shrink-0">{label}</span>
                       <div className="flex-1 bg-slate-200 rounded-full h-2">
-                        <div className="h-2 rounded-full bg-teal-400 transition-all" style={{ width: `${(val / 5) * 100}%` }} />
+                        <div className="h-2 rounded-full bg-violet-400 transition-all" style={{ width: `${(val / 5) * 100}%` }} />
                       </div>
                       <span className={`text-xs font-bold w-4 ${SCORE_COLORS[val]}`}>{val}</span>
                     </div>
@@ -321,7 +318,7 @@ export default function MemoPage() {
                   <p className="text-xs text-slate-400 mt-0.5">Coverage rasio agunan terhadap plafon</p>
                 </div>
                 <button onClick={addCollateral}
-                  className="flex items-center gap-2 bg-teal-500 text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-teal-600 transition-all">
+                  className="flex items-center gap-2 bg-violet-600 text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-violet-600 transition-all">
                   <Plus className="h-3.5 w-3.5" /> Tambah Agunan
                 </button>
               </div>
@@ -356,23 +353,23 @@ export default function MemoPage() {
                         {[
                           { label: "Jenis", node: (
                             <select value={c.type} onChange={(e) => updateCollateral(idx, { type: e.target.value })}
-                              className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400">
+                              className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400">
                               {COLLATERAL_TYPES.map((t) => <option key={t}>{t}</option>)}
                             </select>
                           )},
-                          { label: "Deskripsi", node: <input value={c.description} onChange={(e) => updateCollateral(idx, { description: e.target.value })} placeholder="Alamat/Detail aset..." className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /> },
-                          { label: "Nilai Pasar (Rp)", node: <input type="number" value={c.marketValue || ""} onChange={(e) => updateCollateral(idx, { marketValue: Number(e.target.value) })} placeholder="0" className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 tabular-nums" /> },
-                          { label: "Nilai Likuidasi (Rp)", node: <input type="number" value={c.liquidationValue || ""} onChange={(e) => updateCollateral(idx, { liquidationValue: Number(e.target.value) })} placeholder="0" className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 tabular-nums" /> },
-                          { label: "LTV Limit (%)", node: <input type="number" value={c.ltvLimit} onChange={(e) => updateCollateral(idx, { ltvLimit: Number(e.target.value) })} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /> },
+                          { label: "Deskripsi", node: <input value={c.description} onChange={(e) => updateCollateral(idx, { description: e.target.value })} placeholder="Alamat/Detail aset..." className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /> },
+                          { label: "Nilai Pasar (Rp)", node: <input type="number" value={c.marketValue || ""} onChange={(e) => updateCollateral(idx, { marketValue: Number(e.target.value) })} placeholder="0" className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 tabular-nums" /> },
+                          { label: "Nilai Likuidasi (Rp)", node: <input type="number" value={c.liquidationValue || ""} onChange={(e) => updateCollateral(idx, { liquidationValue: Number(e.target.value) })} placeholder="0" className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 tabular-nums" /> },
+                          { label: "LTV Limit (%)", node: <input type="number" value={c.ltvLimit} onChange={(e) => updateCollateral(idx, { ltvLimit: Number(e.target.value) })} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /> },
                           { label: "Status Legal", node: (
                             <select value={c.legalStatus} onChange={(e) => updateCollateral(idx, { legalStatus: e.target.value as Collateral["legalStatus"] })}
-                              className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400">
+                              className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400">
                               <option value="clear">Clear / Bersih</option>
                               <option value="in_progress">Dalam Proses</option>
                               <option value="dispute">Sengketa</option>
                             </select>
                           )},
-                          { label: "Tanggal Appraisal", node: <input type="date" value={c.appraisalDate} onChange={(e) => updateCollateral(idx, { appraisalDate: e.target.value })} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /> },
+                          { label: "Tanggal Appraisal", node: <input type="date" value={c.appraisalDate} onChange={(e) => updateCollateral(idx, { appraisalDate: e.target.value })} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /> },
                         ].map(({ label, node }) => (
                           <div key={label}>
                             <label className="text-[10px] font-semibold text-slate-500 block mb-1">{label}</label>
@@ -402,10 +399,10 @@ export default function MemoPage() {
                   const done = ["disetujui","komite","review","diajukan"].indexOf(memo.status) >= ["disetujui","komite","review","diajukan"].indexOf(s) || memo.status === "disetujui";
                   return (
                     <div key={s} className="flex items-center flex-1 last:flex-none">
-                      <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${active ? "bg-teal-500 text-white" : done ? "bg-emerald-400 text-white" : "bg-slate-100 text-slate-400"}`}>
+                      <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${active ? "bg-violet-600 text-white" : done ? "bg-emerald-400 text-white" : "bg-slate-100 text-slate-400"}`}>
                         {i + 1}
                       </div>
-                      <p className={`text-[10px] font-semibold ml-1.5 ${active ? "text-teal-700" : "text-slate-400"}`}>{STATUS_META[s].label}</p>
+                      <p className={`text-[10px] font-semibold ml-1.5 ${active ? "text-violet-700" : "text-slate-400"}`}>{STATUS_META[s].label}</p>
                       {i < arr.length - 1 && <div className={`flex-1 h-px mx-2 ${done ? "bg-emerald-300" : "bg-slate-200"}`} />}
                     </div>
                   );
@@ -417,11 +414,11 @@ export default function MemoPage() {
                 <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Analis</p>
                   <div><label className="text-[10px] text-slate-500 block mb-1">Nama Analis</label>
-                    <input value={memo.analystName} onChange={(e) => set("analystName", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /></div>
+                    <input value={memo.analystName} onChange={(e) => set("analystName", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /></div>
                   <div><label className="text-[10px] text-slate-500 block mb-1">Tanggal</label>
-                    <input type="date" value={memo.analystDate} onChange={(e) => set("analystDate", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /></div>
+                    <input type="date" value={memo.analystDate} onChange={(e) => set("analystDate", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /></div>
                   {memo.status === "draft" && (
-                    <button onClick={() => save("diajukan")} className="w-full text-xs font-semibold bg-blue-50 text-blue-700 py-2 rounded-lg hover:bg-blue-100 transition-all">
+                    <button onClick={() => save("diajukan")} className="w-full text-xs font-semibold bg-violet-50 text-violet-700 py-2 rounded-lg hover:bg-blue-100 transition-all">
                       Ajukan ke Checker →
                     </button>
                   )}
@@ -431,11 +428,11 @@ export default function MemoPage() {
                 <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Checker / Review</p>
                   <div><label className="text-[10px] text-slate-500 block mb-1">Nama Checker</label>
-                    <input value={memo.checkerName} onChange={(e) => set("checkerName", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /></div>
+                    <input value={memo.checkerName} onChange={(e) => set("checkerName", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /></div>
                   <div><label className="text-[10px] text-slate-500 block mb-1">Catatan Review</label>
-                    <textarea value={memo.checkerNotes} onChange={(e) => set("checkerNotes", e.target.value)} rows={2} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 resize-none" /></div>
+                    <textarea value={memo.checkerNotes} onChange={(e) => set("checkerNotes", e.target.value)} rows={2} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 resize-none" /></div>
                   <div><label className="text-[10px] text-slate-500 block mb-1">Tanggal</label>
-                    <input type="date" value={memo.checkerDate} onChange={(e) => set("checkerDate", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /></div>
+                    <input type="date" value={memo.checkerDate} onChange={(e) => set("checkerDate", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /></div>
                   {memo.status === "diajukan" && (
                     <button onClick={() => save("komite")} className="w-full text-xs font-semibold bg-purple-50 text-purple-700 py-2 rounded-lg hover:bg-purple-100 transition-all">
                       Naikkan ke Komite →
@@ -448,9 +445,9 @@ export default function MemoPage() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Komite Kredit</p>
                   <div><label className="text-[10px] text-slate-500 block mb-1">Keputusan Komite</label>
                     <textarea value={memo.committeeDecision} onChange={(e) => set("committeeDecision", e.target.value)} rows={3}
-                      placeholder="Setuju / Tolak dengan catatan..." className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400 resize-none placeholder:text-slate-300" /></div>
+                      placeholder="Setuju / Tolak dengan catatan..." className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400 resize-none placeholder:text-slate-300" /></div>
                   <div><label className="text-[10px] text-slate-500 block mb-1">Tanggal Keputusan</label>
-                    <input type="date" value={memo.committeeDate} onChange={(e) => set("committeeDate", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-teal-400" /></div>
+                    <input type="date" value={memo.committeeDate} onChange={(e) => set("committeeDate", e.target.value)} className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-violet-400" /></div>
                   {memo.status === "komite" && (
                     <div className="flex gap-2">
                       <button onClick={() => save("disetujui")} className="flex-1 text-xs font-semibold bg-emerald-50 text-emerald-700 py-2 rounded-lg hover:bg-emerald-100 transition-all">Setuju</button>

@@ -13,14 +13,14 @@ interface Props {
 export function CompanyHeader({ company, totalTransactions, documentCount, rating, ratingMeta }: Props) {
   return (
     <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
+      <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent" />
       <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-700 ring-1 ring-violet-100">
             <Building2 className="h-6 w-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-teal-600">Profil Perusahaan</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600">Profil Perusahaan</p>
             <h1 className="mt-1 truncate text-xl font-bold leading-tight text-slate-950">{company.name}</h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-slate-500">
               <span className="inline-flex items-center gap-1.5">

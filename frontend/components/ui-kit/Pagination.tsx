@@ -51,7 +51,7 @@ export function Pagination({ page, totalPages, totalItems, pageSize, onPageChang
               className={cn(
                 "flex h-7 min-w-7 items-center justify-center rounded-lg border text-xs font-medium transition-all px-2",
                 page === p
-                  ? "border-teal-500 bg-teal-500 text-white"
+                  ? "border-violet-500 bg-violet-500 text-white"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               )}
             >

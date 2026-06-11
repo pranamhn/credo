@@ -32,7 +32,7 @@ export function PageProgress() {
   return (
     <div className="fixed left-0 top-0 z-[60] h-0.5 w-full bg-transparent">
       <div
-        className="h-full bg-gradient-to-r from-teal-500 via-blue-500 to-indigo-500 shadow-[0_0_12px_rgba(20,184,166,0.45)] transition-all duration-200 ease-out"
+        className="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 shadow-[0_0_12px_rgba(124,58,237,0.45)] transition-all duration-200 ease-out"
         style={{ width: `${width}%` }}
       />
     </div>

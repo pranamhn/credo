@@ -19,13 +19,13 @@ export function DataCard({ accent = false, hoverable = false, padding = "default
     <div
       className={cn(
         "relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
-        hoverable && "transition-all duration-200 hover:border-teal-300 hover:shadow-md",
+        hoverable && "transition-all duration-200 hover:border-violet-300 hover:shadow-md",
         paddingCls,
         className
       )}
     >
       {accent && (
-        <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-teal-400 to-transparent" />
+        <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-violet-400 to-transparent" />
       )}
       {children}
     </div>

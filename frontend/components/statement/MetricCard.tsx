@@ -20,9 +20,9 @@ const highlightConfig = {
     icon:  "text-red-500",
   },
   blue: {
-    bar:   "bg-teal-500",
-    value: "text-teal-700",
-    icon:  "text-teal-600",
+    bar:   "bg-violet-500",
+    value: "text-violet-700",
+    icon:  "text-violet-600",
   },
   default: {
     bar:   "bg-slate-300",

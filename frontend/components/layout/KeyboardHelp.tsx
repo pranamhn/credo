@@ -72,7 +72,7 @@ export function KeyboardHelp({ open, onClose }: KeyboardHelpProps) {
             const Icon = item.icon;
             return (
               <div key={item.title} className="flex items-center gap-3 px-5 py-3.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">

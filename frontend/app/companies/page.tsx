@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { DataCard, EmptyState, GlowButton, Pagination } from "@/components/ui-kit";
+import { DataCard, EmptyState, GlowButton, PageHeader, Pagination } from "@/components/ui-kit";
 import { companiesApi, CompanySummary } from "@/lib/api";
 import { formatDate, formatIDR } from "@/lib/utils";
 import { Building2, Check, ChevronDown, FileText, Filter, LayoutGrid, List, Plus, Search, TrendingDown, TrendingUp, X } from "lucide-react";
@@ -58,6 +58,14 @@ function getNetFlowMeta(netFlow: number) {
     badge: "bg-slate-100 text-slate-600 ring-slate-200",
   };
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  done: "Selesai",
+  needs_review: "Perlu Review",
+  failed: "Gagal",
+  parsing: "Parsing",
+  queued: "Antrian",
+};
 
 const RISK_CARD_STYLE: Record<RiskTier, { border: string; icon: string; accent: string; soft: string; value: string }> = {
   High: {
@@ -147,7 +155,7 @@ export default function CompaniesPage() {
     if (tier === "High") return "bg-red-50 text-red-700 ring-red-200";
     if (tier === "Medium") return "bg-amber-50 text-amber-700 ring-amber-200";
     if (tier === "Low") return "bg-emerald-50 text-emerald-700 ring-emerald-200";
-    return "bg-blue-50 text-blue-700 ring-blue-200";
+    return "bg-violet-50 text-violet-700 ring-blue-200";
   };
   const searchControl = !loading && companies.length > 0 ? (
     <label className="relative block w-full sm:w-64">
@@ -159,7 +167,7 @@ export default function CompaniesPage() {
           setPage(1);
         }}
         placeholder="Cari perusahaan..."
-        className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-teal-400 focus:ring-2 focus:ring-teal-500/15"
+        className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all placeholder:text-slate-400 hover:border-slate-300 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/15"
       />
     </label>
   ) : null;
@@ -173,7 +181,7 @@ export default function CompaniesPage() {
         onClick={() => setViewMode("list")}
         className={`rounded-md p-1.5 transition-colors ${
           viewMode === "list"
-            ? "bg-white text-teal-700 shadow-sm"
+            ? "bg-white text-violet-700 shadow-sm"
             : "text-slate-400 hover:text-slate-600"
         }`}
       >
@@ -187,7 +195,7 @@ export default function CompaniesPage() {
         onClick={() => setViewMode("kanban")}
         className={`rounded-md p-1.5 transition-colors ${
           viewMode === "kanban"
-            ? "bg-white text-teal-700 shadow-sm"
+            ? "bg-white text-violet-700 shadow-sm"
             : "text-slate-400 hover:text-slate-600"
         }`}
       >
@@ -207,7 +215,7 @@ export default function CompaniesPage() {
         aria-haspopup="listbox"
         aria-expanded={riskMenuOpen}
         onClick={() => setRiskMenuOpen((open) => !open)}
-        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-150 select-none hover:bg-teal-700 active:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500/25"
+        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-150 select-none hover:bg-violet-700 active:bg-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-500/25"
       >
         <span className="shrink-0 h-4 w-4">
           <Filter className="h-4 w-4" />
@@ -245,7 +253,7 @@ export default function CompaniesPage() {
             >
               <span className="flex min-w-0 items-center gap-3">
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white ${
-                  tier === "High" ? "bg-red-500" : tier === "Medium" ? "bg-amber-500" : tier === "Low" ? "bg-emerald-500" : "bg-blue-500"
+                  tier === "High" ? "bg-red-500" : tier === "Medium" ? "bg-amber-500" : tier === "Low" ? "bg-emerald-500" : "bg-violet-500"
                 }`} />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">{tier}</span>
@@ -258,7 +266,7 @@ export default function CompaniesPage() {
                 <span className={`min-w-7 rounded-md px-2 py-1 text-center text-[11px] font-bold leading-none ring-1 ${getTierClasses(tier)}`}>
                   {getTierCount(tier)}
                 </span>
-                <Check className={`h-4 w-4 text-teal-600 transition-opacity ${active ? "opacity-100" : "opacity-0"}`} />
+                <Check className={`h-4 w-4 text-violet-600 transition-opacity ${active ? "opacity-100" : "opacity-0"}`} />
               </span>
             </button>
           );
@@ -270,23 +278,12 @@ export default function CompaniesPage() {
   return (
     <AppShell>
       <div className="space-y-6">
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-                <Building2 className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-teal-600 mb-1 select-none">
-                  Portfolio
-                </p>
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 leading-tight">
-                  Daftar Perusahaan
-                </h1>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <PageHeader
+          eyebrow="Portfolio"
+          title="Daftar Perusahaan"
+          description="Manajemen profil perusahaan dan monitoring risiko kredit"
+          actions={
+            <>
               {searchControl}
               {riskFilterDropdown}
               <GlowButton
@@ -297,16 +294,16 @@ export default function CompaniesPage() {
                 Buat Perusahaan
               </GlowButton>
               {viewModeControl}
-            </div>
-          </div>
-        </section>
+            </>
+          }
+        />
 
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm">
             <div className="w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20">
               <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700 ring-1 ring-teal-100">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700 ring-1 ring-violet-100">
                     <Building2 className="h-5 w-5" />
                   </div>
                   <div>
@@ -340,7 +337,7 @@ export default function CompaniesPage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Contoh: PT Duluin Digital Investama"
                     autoFocus
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-all focus:border-teal-400 focus:ring-2 focus:ring-teal-500/10"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-all focus:border-violet-400 focus:ring-2 focus:ring-violet-500/10"
                   />
                 </div>
                 <div>
@@ -352,7 +349,7 @@ export default function CompaniesPage() {
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Catatan opsional untuk analis"
                     rows={3}
-                    className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-all focus:border-teal-400 focus:ring-2 focus:ring-teal-500/10"
+                    className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-all focus:border-violet-400 focus:ring-2 focus:ring-violet-500/10"
                   />
                 </div>
 
@@ -445,7 +442,7 @@ function CompanyListTable({ items }: { items: CompanySummary[] }) {
               const netFlowMeta = getNetFlowMeta(netFlow);
               const tier = getRiskTier(item);
               const style = RISK_CARD_STYLE[tier];
-              const latestStatus = item.latest_status ? item.latest_status.replace("_", " ") : "Belum ada";
+              const latestStatus = item.latest_status ? (STATUS_LABELS[item.latest_status] ?? item.latest_status.replace("_", " ")) : "Belum ada";
               const uploadTotal = item.successful_uploads + item.failed_uploads;
               const successRate = uploadTotal > 0 ? Math.round((item.successful_uploads / uploadTotal) * 100) : 0;
 
@@ -457,7 +454,7 @@ function CompanyListTable({ items }: { items: CompanySummary[] }) {
                         <Building2 className="size-4.5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-slate-800 transition-colors group-hover:text-teal-700">
+                        <p className="truncate font-semibold text-slate-800 transition-colors group-hover:text-violet-700">
                           {item.company.name}
                         </p>
                         <p className="mt-0.5 text-[11px] text-slate-400">
@@ -506,7 +503,7 @@ function CompanyListTable({ items }: { items: CompanySummary[] }) {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/companies/${item.company.id}`}
-                      className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-500 transition-all hover:border-teal-200 hover:text-teal-700"
+                      className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-500 transition-all hover:border-violet-200 hover:text-violet-700"
                     >
                       Detail
                     </Link>
@@ -526,7 +523,7 @@ function CompanyCard({ item, idx }: { item: CompanySummary; idx: number }) {
   const netFlowMeta = getNetFlowMeta(netFlow);
   const tier       = getRiskTier(item);
   const style      = RISK_CARD_STYLE[tier];
-  const latestStatus = item.latest_status ? item.latest_status.replace("_", " ") : "Belum ada";
+  const latestStatus = item.latest_status ? (STATUS_LABELS[item.latest_status] ?? item.latest_status.replace("_", " ")) : "Belum ada";
   const uploadTotal = item.successful_uploads + item.failed_uploads;
   const successRate = uploadTotal > 0 ? Math.round((item.successful_uploads / uploadTotal) * 100) : 0;
   const metricItems = [
@@ -556,84 +553,56 @@ function CompanyCard({ item, idx }: { item: CompanySummary; idx: number }) {
   return (
     <Link
       href={`/companies/${item.company.id}`}
-      className={`fade-in-up group flex min-h-[260px] flex-col overflow-hidden rounded-xl border border-l-4 border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md ${style.border}`}
+      className={`fade-in-up group flex flex-col overflow-hidden rounded-xl border border-l-4 border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md ${style.border}`}
       style={{ animationDelay: `${idx * 40}ms` }}
     >
-      <div className="flex items-start justify-between gap-4 p-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ring-black/5 ${style.icon}`}>
-            <Building2 className="size-5" />
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 p-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ring-black/5 ${style.icon}`}>
+            <Building2 className="size-4" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-950 transition-colors group-hover:text-teal-700">
+            <p className="truncate text-sm font-semibold text-slate-900 transition-colors group-hover:text-violet-700">
               {item.company.name}
             </p>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-              <span>{item.document_count} dokumen</span>
-              <span className="h-1 w-1 rounded-full bg-slate-300" />
-              <span className="capitalize">{latestStatus}</span>
-              <span className="h-1 w-1 rounded-full bg-slate-300" />
-              <span>Dibuat {formatDate(item.company.created_at)}</span>
-            </div>
+            <p className="mt-0.5 text-xs text-slate-400">
+              {item.document_count} dok · {formatDate(item.company.created_at)}
+            </p>
           </div>
         </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${style.soft}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${style.accent}`} />
-            {tier}
-          </span>
-        </div>
+        <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${style.soft}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${style.accent}`} />
+          {tier}
+        </span>
       </div>
 
-      <div className="grid gap-px border-y border-slate-100 bg-slate-100 sm:grid-cols-3">
-        {metricItems.map(({ icon, label, value, title, color }) => (
-          <div key={label} className="min-w-0 bg-white px-4 py-3">
-            <div className="flex items-start gap-2">
-              <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-50 ${color}`}>
-                {icon}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-                <p className="mt-1 truncate whitespace-nowrap text-sm font-semibold leading-none text-slate-950" title={title}>
-                  {value}
-                </p>
-              </div>
-            </div>
+      {/* Metrics */}
+      <div className="grid grid-cols-3 border-t border-slate-100">
+        {metricItems.map(({ label, value, title, color }) => (
+          <div key={label} className="px-4 py-3">
+            <p className="text-[10px] text-slate-400">{label}</p>
+            <p className={`mt-0.5 truncate text-sm font-semibold ${color}`} title={title}>{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-4">
-        <div>
-          <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="font-medium text-slate-500">Kualitas upload</span>
-            <span className="font-semibold text-slate-700">{successRate}% berhasil</span>
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${successRate}%` }} />
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-              style={{ width: `${successRate}%` }}
-            />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-            <span>{item.successful_uploads} OK</span>
-            <span className={item.failed_uploads > 0 ? "font-semibold text-red-600" : ""}>
-              {item.failed_uploads} gagal
-            </span>
-          </div>
+          <p className="text-[11px] text-slate-400">
+            {successRate}% berhasil
+            {item.failed_uploads > 0 && <span className="ml-1.5 font-semibold text-red-500">· {item.failed_uploads} gagal</span>}
+          </p>
         </div>
-
-        <div className="mt-auto flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Net flow</p>
-            <p className={`mt-1 truncate text-base font-semibold leading-none ${netFlowMeta.text}`}>
-              {netFlowMeta.prefix && `${netFlowMeta.prefix} `}{formatIDR(Math.abs(netFlow))}
-            </p>
-          </div>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${netFlowMeta.badge}`}>
-            {netFlowMeta.label}
-          </span>
+        <div className="shrink-0 text-right">
+          <p className={`text-sm font-semibold ${netFlowMeta.text}`}>
+            {netFlowMeta.prefix}{formatCompactIDR(Math.abs(netFlow))}
+          </p>
+          <p className="text-[10px] text-slate-400">{netFlowMeta.label}</p>
         </div>
       </div>
     </Link>

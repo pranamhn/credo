@@ -22,7 +22,7 @@ type GlowButtonProps = AsButton | AsLink;
 
 const variantCls: Record<GlowVariant, string> = {
   primary:
-    "bg-teal-600 text-white shadow-sm hover:bg-teal-700 active:bg-teal-800",
+    "bg-violet-600 text-white shadow-sm hover:bg-violet-700 active:bg-violet-800",
   secondary:
     "bg-white text-slate-800 border border-slate-300 shadow-sm hover:bg-slate-50 hover:border-slate-400",
   ghost:

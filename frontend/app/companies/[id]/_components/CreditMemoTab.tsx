@@ -26,7 +26,7 @@ export function CreditMemoTab({
     <div className="p-6 space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-teal-600">Analisa 5C</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600">Analisa 5C</p>
           <h2 className="text-base font-bold text-slate-900">{company.name}</h2>
           <p className="text-xs text-slate-400 mt-1">
             Terakhir diperbarui: {new Date(memo.updatedAt).toLocaleString("id-ID")}
@@ -35,7 +35,7 @@ export function CreditMemoTab({
         <button
           type="button"
           onClick={saveMemo}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-600 transition-all"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-600 transition-all"
         >
           <Save className="h-3.5 w-3.5" /> Simpan Memo
         </button>
@@ -47,7 +47,7 @@ export function CreditMemoTab({
           <select
             value={memo.facilityType}
             onChange={(e) => setMemoField("facilityType", e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400"
           >
             {FACILITY_TYPES.map((type) => <option key={type}>{type}</option>)}
           </select>
@@ -59,7 +59,7 @@ export function CreditMemoTab({
             value={memo.loanAmount || ""}
             onChange={(e) => setMemoField("loanAmount", Number(e.target.value))}
             placeholder="0"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400 tabular-nums"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400 tabular-nums"
           />
         </label>
         <label className="space-y-1.5">
@@ -68,7 +68,7 @@ export function CreditMemoTab({
             type="number"
             value={memo.tenor}
             onChange={(e) => setMemoField("tenor", Number(e.target.value))}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400"
           />
         </label>
         <label className="space-y-1.5">
@@ -79,7 +79,7 @@ export function CreditMemoTab({
             value={memo.proposedRate || ""}
             onChange={(e) => setMemoField("proposedRate", Number(e.target.value))}
             placeholder="0.0"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400 tabular-nums"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400 tabular-nums"
           />
         </label>
       </div>
@@ -93,7 +93,7 @@ export function CreditMemoTab({
               onChange={(e) => setMemoField("loanPurpose", e.target.value)}
               rows={3}
               placeholder="Deskripsikan tujuan penggunaan kredit..."
-              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300"
+              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300"
             />
           </label>
           <label className="block space-y-1.5">
@@ -103,7 +103,7 @@ export function CreditMemoTab({
               onChange={(e) => setMemoField("repaymentSource", e.target.value)}
               rows={3}
               placeholder="Contoh: arus kas operasional, piutang dagang, kontrak berjalan..."
-              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300"
+              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300"
             />
           </label>
           <label className="block space-y-1.5">
@@ -113,7 +113,7 @@ export function CreditMemoTab({
               onChange={(e) => setMemoField("conditions", e.target.value)}
               rows={4}
               placeholder="Tambahkan covenant, dokumen pending, atau catatan komite..."
-              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300"
+              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300"
             />
           </label>
         </div>
@@ -123,7 +123,7 @@ export function CreditMemoTab({
           <select
             value={memo.status}
             onChange={(e) => setMemoField("status", e.target.value as CreditMemo["status"])}
-            className="mb-4 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400"
+            className="mb-4 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400"
           >
             {MEMO_STATUS.map((status) => (
               <option key={status} value={status}>{MEMO_STATUS_LABEL[status]}</option>
@@ -143,7 +143,7 @@ export function CreditMemoTab({
                       onClick={() => setMemoField(key, score)}
                       className={`h-6 w-6 rounded-md text-[10px] font-bold transition-all ${
                         memo[key] === score
-                          ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
+                          ? "bg-violet-50 text-violet-700 ring-1 ring-violet-200"
                           : "bg-white text-slate-400 ring-1 ring-slate-200 hover:text-slate-600"
                       }`}
                     >
@@ -167,7 +167,7 @@ export function CreditMemoTab({
                 <span className="font-semibold text-slate-700">{label[0]}</span>: {memo[scoreKey]}
               </span>
             ))}
-            <span className="text-[10px] font-semibold text-teal-600 ml-1">
+            <span className="text-[10px] font-semibold text-violet-600 ml-1">
               Avg {(MEMO_5C_FIELDS.reduce((s, { scoreKey }) => s + memo[scoreKey], 0) / MEMO_5C_FIELDS.length).toFixed(1)}
             </span>
           </div>
@@ -180,7 +180,7 @@ export function CreditMemoTab({
                 <div className="flex gap-0.5">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <button key={s} type="button" onClick={() => setMemoField(scoreKey, s)}
-                      className={`h-6 w-6 rounded text-[10px] font-bold transition-all ${memo[scoreKey] === s ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200" : "bg-slate-100 text-slate-400 hover:text-slate-600"}`}>
+                      className={`h-6 w-6 rounded text-[10px] font-bold transition-all ${memo[scoreKey] === s ? "bg-violet-50 text-violet-700 ring-1 ring-violet-200" : "bg-slate-100 text-slate-400 hover:text-slate-600"}`}>
                       {s}
                     </button>
                   ))}
@@ -191,7 +191,7 @@ export function CreditMemoTab({
                 onChange={(e) => setMemoField(notesKey, e.target.value)}
                 rows={2}
                 placeholder={`Catatan ${label}...`}
-                className="w-full resize-none rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300 transition-all"
+                className="w-full resize-none rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300 transition-all"
               />
             </div>
           ))}
@@ -203,7 +203,7 @@ export function CreditMemoTab({
         <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
           <p className="text-xs font-bold text-slate-700">Daftar Jaminan / Agunan</p>
           <button onClick={addCollateral}
-            className="inline-flex items-center gap-1 rounded-lg bg-teal-500 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-teal-600 transition-all">
+            className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-violet-600 transition-all">
             <Plus className="h-3 w-3" /> Tambah
           </button>
         </div>
@@ -226,34 +226,34 @@ export function CreditMemoTab({
                   <label className="space-y-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Tipe Jaminan</span>
                     <input value={col.type} onChange={(e) => updateCollateral(col.id, "type", e.target.value)}
-                      placeholder="Tanah & Bangunan..." className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300" />
+                      placeholder="Tanah & Bangunan..." className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300" />
                   </label>
                   <label className="space-y-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Deskripsi</span>
                     <input value={col.description} onChange={(e) => updateCollateral(col.id, "description", e.target.value)}
-                      placeholder="Lokasi/detail..." className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300" />
+                      placeholder="Lokasi/detail..." className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300" />
                   </label>
                   <label className="space-y-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Tgl Appraisal</span>
                     <input type="date" value={col.appraisalDate} onChange={(e) => updateCollateral(col.id, "appraisalDate", e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-teal-400" />
+                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-violet-400" />
                   </label>
                   <label className="space-y-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Nilai Pasar (Rp)</span>
                     <input type="number" value={col.marketValue || ""}
                       onChange={(e) => updateCollateral(col.id, "marketValue", Number(e.target.value))}
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-right text-slate-700 outline-none focus:border-teal-400 tabular-nums" />
+                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-right text-slate-700 outline-none focus:border-violet-400 tabular-nums" />
                   </label>
                   <label className="space-y-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Nilai Likuidasi (Rp)</span>
                     <input type="number" value={col.liquidationValue || ""}
                       onChange={(e) => updateCollateral(col.id, "liquidationValue", Number(e.target.value))}
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-right text-slate-700 outline-none focus:border-teal-400 tabular-nums" />
+                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] text-right text-slate-700 outline-none focus:border-violet-400 tabular-nums" />
                   </label>
                   <label className="space-y-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Status Legal</span>
                     <select value={col.legalStatus} onChange={(e) => updateCollateral(col.id, "legalStatus", e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-teal-400">
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-violet-400">
                       <option value="clear">Clear</option>
                       <option value="in_progress">In Progress</option>
                       <option value="dispute">Dispute</option>
@@ -289,12 +289,12 @@ export function CreditMemoTab({
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Risk Analyst</span>
               <input value={memo.analystName} onChange={(e) => setMemoField("analystName", e.target.value)}
                 placeholder="Nama analis"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300" />
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300" />
             </label>
             <label className="space-y-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Tanggal Analisis</span>
               <input type="date" value={memo.analystDate} onChange={(e) => setMemoField("analystDate", e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400" />
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400" />
             </label>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -302,25 +302,25 @@ export function CreditMemoTab({
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Checker</span>
               <input value={memo.checkerName} onChange={(e) => setMemoField("checkerName", e.target.value)}
                 placeholder="Nama checker"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300" />
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300" />
             </label>
             <label className="space-y-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Tanggal Review</span>
               <input type="date" value={memo.checkerDate} onChange={(e) => setMemoField("checkerDate", e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400" />
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400" />
             </label>
             <label className="space-y-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Catatan Checker</span>
               <textarea value={memo.checkerNotes} onChange={(e) => setMemoField("checkerNotes", e.target.value)}
                 rows={1} placeholder="Catatan review..."
-                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400 placeholder:text-slate-300" />
+                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400 placeholder:text-slate-300" />
             </label>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Keputusan Komite</span>
               <select value={memo.committeeDecision} onChange={(e) => setMemoField("committeeDecision", e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400">
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400">
                 <option value="">-- Belum ada keputusan --</option>
                 <option value="disetujui">Disetujui</option>
                 <option value="disetujui_syarat">Disetujui dengan Syarat</option>
@@ -331,7 +331,7 @@ export function CreditMemoTab({
             <label className="space-y-1.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Tanggal Komite</span>
               <input type="date" value={memo.committeeDate} onChange={(e) => setMemoField("committeeDate", e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-teal-400" />
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-violet-400" />
             </label>
           </div>
         </div>

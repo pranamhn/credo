@@ -26,8 +26,8 @@ const DOC_TYPES: DocOption[] = [
     label: "Bank Statement",
     sub: "Akan diparse transaksinya",
     icon: FileText,
-    iconBg: "bg-teal-50",
-    iconText: "text-teal-700",
+    iconBg: "bg-violet-50",
+    iconText: "text-violet-700",
   },
   {
     key: "profit_loss",
@@ -186,7 +186,7 @@ export default function UploadPage() {
         />
 
         {/* Info banner */}
-        <div className="flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-700">
+        <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-700">
           <ScanLine className="h-4 w-4 shrink-0" />
           <span>{INFOBANNER[docType]}</span>
         </div>
@@ -237,7 +237,7 @@ export default function UploadPage() {
                   className={cn(
                     "flex items-center gap-3 w-full rounded-lg border p-2.5 text-left transition-all",
                     isActive
-                      ? "border-teal-300 bg-teal-50 text-teal-800 shadow-sm"
+                      ? "border-violet-300 bg-violet-50 text-violet-800 shadow-sm"
                       : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                   )}
                 >
@@ -250,7 +250,7 @@ export default function UploadPage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold">{opt.label}</p>
-                    <p className={cn("text-[10px]", isActive ? "text-teal-600" : "text-slate-400")}>
+                    <p className={cn("text-[10px]", isActive ? "text-violet-600" : "text-slate-400")}>
                       {opt.sub}
                     </p>
                   </div>
@@ -306,7 +306,7 @@ export default function UploadPage() {
               <div className="grid grid-cols-3 gap-2">
                 {[["20+", "Bank"], ["OCR", "Ready"], ["Auto", "Format"]].map(([v, l]) => (
                   <div key={v} className="rounded-lg border border-slate-200 bg-white p-2.5 text-center shadow-sm">
-                    <p className="text-sm font-bold text-teal-600">{v}</p>
+                    <p className="text-sm font-bold text-violet-600">{v}</p>
                     <p className="text-[10px] text-slate-400">{l}</p>
                   </div>
                 ))}

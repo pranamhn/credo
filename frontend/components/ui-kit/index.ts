@@ -21,3 +21,11 @@ export { DataCard, DataCardHeader } from "./DataCard";
 export { Pagination } from "./Pagination";
 
 export { CommandPalette } from "./CommandPalette";
+
+export { BalanceCard }        from "./BalanceCard";
+export { SendInvoicesPanel }  from "./SendInvoicesPanel";
+export type { SendRecipient } from "./SendInvoicesPanel";
+
+export type { GradientColor } from "./StatCard";
+
+export { HealthScoreCard }    from "./HealthScoreCard";

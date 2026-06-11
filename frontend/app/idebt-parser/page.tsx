@@ -222,7 +222,7 @@ function SlikFasilitasRow({ f, i }: { f: any; i: number }) {
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50 transition-colors">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-700 text-xs font-bold shrink-0">{i + 1}</span>
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-50 text-violet-700 text-xs font-bold shrink-0">{i + 1}</span>
         <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-slate-800 truncate">{f.kreditur || "—"}</p><p className="text-xs text-slate-500">{f.jenis_kredit || "—"}</p></div>
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-right hidden sm:block"><p className="text-[11px] text-slate-400">Plafon</p><p className="text-xs font-medium text-slate-700">{formatIDR(f.plafon)}</p></div>
