@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl *)",
+      "Bash(python3 *)",
+      "Bash(npx *)",
+      "Bash(cat *)",
+      "Bash(docker-compose *)",
+      "Bash(xargs *)",
+      "Bash(echo *)",
+      "Bash(lsof *)",
+      "Bash(kill *)",
+      "Bash(sleep *)",
+      "Bash(.venv/bin/uvicorn *)",
+      "Bash(.venv/bin/python *)",
+      "Bash(find *)"
+    ]
+  },
+  "$version": 4
+}

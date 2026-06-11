@@ -12,6 +12,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from app.models.slik_report import SlikReport
     from app.models.cbi_report import CbiReport
+    from app.models.click_report import ClickReport
 
 
 class Company(Base):
@@ -26,3 +27,4 @@ class Company(Base):
     statements: Mapped[list["Statement"]] = relationship(back_populates="company")
     slik_reports: Mapped[list["SlikReport"]] = relationship(back_populates="company")
     cbi_reports: Mapped[list["CbiReport"]] = relationship(back_populates="company")
+    click_reports: Mapped[list["ClickReport"]] = relationship(back_populates="company")

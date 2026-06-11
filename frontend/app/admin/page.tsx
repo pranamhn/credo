@@ -14,17 +14,17 @@ type Role = "Administrator" | "Analis Senior" | "Analis" | "Viewer";
 interface User { id: string; name: string; email: string; role: Role; lastActive: string; active: boolean }
 
 const INITIAL_USERS: User[] = [
-  { id: "1", name: "Rachmad Mahendra", email: "rachmad@credo.id",  role: "Administrator",  lastActive: "Baru saja",   active: true },
-  { id: "2", name: "Andi Wijaya",      email: "andi@credo.id",     role: "Analis Senior",  lastActive: "2 jam lalu",  active: true },
-  { id: "3", name: "Siti Rahayu",      email: "siti@credo.id",     role: "Analis",         lastActive: "Kemarin",     active: true },
-  { id: "4", name: "Budi Santoso",     email: "budi@credo.id",     role: "Viewer",         lastActive: "3 hari lalu", active: false },
+  { id: "1", name: "Rachmad Mahendra", email: "rachmad@credo.id", role: "Administrator", lastActive: "Baru saja", active: true },
+  { id: "2", name: "Andi Wijaya", email: "andi@credo.id", role: "Analis Senior", lastActive: "2 jam lalu", active: true },
+  { id: "3", name: "Siti Rahayu", email: "siti@credo.id", role: "Analis", lastActive: "Kemarin", active: true },
+  { id: "4", name: "Budi Santoso", email: "budi@credo.id", role: "Viewer", lastActive: "3 hari lalu", active: false },
 ];
 
 const ROLE_BADGE: Record<Role, string> = {
   "Administrator": "bg-red-50 text-red-700 ring-red-200",
   "Analis Senior": "bg-indigo-50 text-indigo-700 ring-indigo-200",
-  "Analis":        "bg-violet-50 text-violet-700 ring-violet-200",
-  "Viewer":        "bg-slate-100 text-slate-600 ring-slate-200",
+  "Analis": "bg-violet-50 text-violet-700 ring-violet-200",
+  "Viewer": "bg-slate-100 text-slate-600 ring-slate-200",
 };
 
 const ROLES: Role[] = ["Administrator", "Analis Senior", "Analis", "Viewer"];
@@ -32,22 +32,22 @@ const ROLES: Role[] = ["Administrator", "Analis Senior", "Analis", "Viewer"];
 // AD2 — Mock parser health data
 interface BankHealth { bank: string; status: "ok" | "degraded" | "down"; successRate: number; avgParseSec: number; lastChecked: string }
 const BANK_HEALTH: BankHealth[] = [
-  { bank: "BCA",        status: "ok",       successRate: 98.5, avgParseSec: 4.2,  lastChecked: "1 min lalu" },
-  { bank: "Mandiri",    status: "ok",       successRate: 97.1, avgParseSec: 5.8,  lastChecked: "1 min lalu" },
-  { bank: "BNI",        status: "ok",       successRate: 96.4, avgParseSec: 6.1,  lastChecked: "2 min lalu" },
-  { bank: "BRI",        status: "degraded", successRate: 82.0, avgParseSec: 12.4, lastChecked: "2 min lalu" },
-  { bank: "CIMB Niaga", status: "ok",       successRate: 95.8, avgParseSec: 5.2,  lastChecked: "3 min lalu" },
-  { bank: "Danamon",    status: "ok",       successRate: 93.2, avgParseSec: 7.4,  lastChecked: "3 min lalu" },
-  { bank: "Permata",    status: "degraded", successRate: 78.5, avgParseSec: 15.1, lastChecked: "5 min lalu" },
-  { bank: "BTN",        status: "ok",       successRate: 91.0, avgParseSec: 8.0,  lastChecked: "5 min lalu" },
-  { bank: "Maybank",    status: "ok",       successRate: 90.5, avgParseSec: 8.3,  lastChecked: "6 min lalu" },
-  { bank: "Panin",      status: "down",     successRate: 0,    avgParseSec: 0,    lastChecked: "10 min lalu" },
+  { bank: "BCA", status: "ok", successRate: 98.5, avgParseSec: 4.2, lastChecked: "1 min lalu" },
+  { bank: "Mandiri", status: "ok", successRate: 97.1, avgParseSec: 5.8, lastChecked: "1 min lalu" },
+  { bank: "BNI", status: "ok", successRate: 96.4, avgParseSec: 6.1, lastChecked: "2 min lalu" },
+  { bank: "BRI", status: "degraded", successRate: 82.0, avgParseSec: 12.4, lastChecked: "2 min lalu" },
+  { bank: "CIMB Niaga", status: "ok", successRate: 95.8, avgParseSec: 5.2, lastChecked: "3 min lalu" },
+  { bank: "Danamon", status: "ok", successRate: 93.2, avgParseSec: 7.4, lastChecked: "3 min lalu" },
+  { bank: "Permata", status: "degraded", successRate: 78.5, avgParseSec: 15.1, lastChecked: "5 min lalu" },
+  { bank: "BTN", status: "ok", successRate: 91.0, avgParseSec: 8.0, lastChecked: "5 min lalu" },
+  { bank: "Maybank", status: "ok", successRate: 90.5, avgParseSec: 8.3, lastChecked: "6 min lalu" },
+  { bank: "Panin", status: "down", successRate: 0, avgParseSec: 0, lastChecked: "10 min lalu" },
 ];
 
 const STATUS_META = {
-  ok:       { label: "OK",       icon: CheckCircle2,   cls: "text-emerald-500", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
-  degraded: { label: "Degraded", icon: AlertTriangle,  cls: "text-amber-500",   badge: "bg-amber-50 text-amber-700 ring-amber-200" },
-  down:     { label: "Down",     icon: XCircle,        cls: "text-red-500",     badge: "bg-red-50 text-red-700 ring-red-200" },
+  ok: { label: "OK", icon: CheckCircle2, cls: "text-emerald-500", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+  degraded: { label: "Degraded", icon: AlertTriangle, cls: "text-amber-500", badge: "bg-amber-50 text-amber-700 ring-amber-200" },
+  down: { label: "Down", icon: XCircle, cls: "text-red-500", badge: "bg-red-50 text-red-700 ring-red-200" },
 };
 
 export default function AdminPage() {
@@ -56,9 +56,9 @@ export default function AdminPage() {
   // AD1 state
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName]   = useState("");
+  const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
-  const [newRole, setNewRole]   = useState<Role>("Analis");
+  const [newRole, setNewRole] = useState<Role>("Analis");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // AD2 state
@@ -124,9 +124,9 @@ export default function AdminPage() {
     setTimeout(() => { setRefreshing(false); toast.success("Status parser diperbarui"); }, 1500);
   };
 
-  const okCount       = BANK_HEALTH.filter((b) => b.status === "ok").length;
+  const okCount = BANK_HEALTH.filter((b) => b.status === "ok").length;
   const degradedCount = BANK_HEALTH.filter((b) => b.status === "degraded").length;
-  const downCount     = BANK_HEALTH.filter((b) => b.status === "down").length;
+  const downCount = BANK_HEALTH.filter((b) => b.status === "down").length;
 
   return (
     <AppShell>
@@ -140,14 +140,13 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
           {[
-            { key: "users",    label: "Manajemen User", icon: Users },
-            { key: "health",   label: "Parser Health",  icon: Activity },
-            { key: "approval", label: "Page Approval",  icon: UserCheck },
+            { key: "users", label: "Manajemen User", icon: Users },
+            { key: "health", label: "Parser Health", icon: Activity },
+            { key: "approval", label: "Page Approval", icon: UserCheck },
           ].map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setActiveTab(key as "users" | "health" | "approval")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-                activeTab === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
             >
               <Icon className="h-4 w-4" />
               {label}
@@ -219,9 +218,8 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3">
                         <button onClick={() => handleToggleActive(u.id)}
-                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 transition-all ${
-                            u.active ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100" : "bg-slate-100 text-slate-500 ring-slate-200 hover:bg-slate-200"
-                          }`}>
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 transition-all ${u.active ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100" : "bg-slate-100 text-slate-500 ring-slate-200 hover:bg-slate-200"
+                            }`}>
                           {u.active ? "Aktif" : "Nonaktif"}
                         </button>
                       </td>
@@ -280,11 +278,10 @@ export default function AdminPage() {
                 const meta = STATUS_META[b.status];
                 const StatusIcon = meta.icon;
                 return (
-                  <div key={b.bank} className={`rounded-xl border bg-white p-4 shadow-sm ring-1 transition-all ${
-                    b.status === "ok" ? "border-slate-200 ring-transparent" :
+                  <div key={b.bank} className={`rounded-xl border bg-white p-4 shadow-sm ring-1 transition-all ${b.status === "ok" ? "border-slate-200 ring-transparent" :
                     b.status === "degraded" ? "border-amber-200 ring-amber-100" :
-                    "border-red-200 ring-red-100"
-                  }`}>
+                      "border-red-200 ring-red-100"
+                    }`}>
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-bold text-slate-800">{b.bank}</p>
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${meta.badge}`}>
@@ -335,6 +332,25 @@ export default function AdminPage() {
               <div>
                 <p className="text-sm font-semibold text-slate-700">Konfigurasi Approver</p>
                 <p className="text-xs text-slate-400 mt-0.5">Daftar pejabat yang menandatangani halaman Persetujuan Kredit. Urutan menentukan posisi kolom tanda tangan.</p>
+              </div>
+            </div>
+
+            {/* Template Approver Default */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Template Approver Default</p>
+              <p className="text-[10px] text-slate-400 mb-3">Nama default digunakan lintas perusahaan. Disimpan di browser.</p>
+              <div className="grid gap-3 md:grid-cols-3">
+                {approvers.map((a) => (
+                  <div key={a.id} className="space-y-1.5">
+                    <p className="text-xs font-semibold text-slate-600">{a.jabatan}</p>
+                    <input
+                      placeholder={`Nama ${a.jabatan}`}
+                      value={a.nama}
+                      onChange={(e) => handleUpdateApprover(a.id, "nama", e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none transition-all placeholder:text-slate-300 focus:border-violet-400"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 

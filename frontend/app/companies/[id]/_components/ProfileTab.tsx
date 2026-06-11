@@ -1,6 +1,6 @@
 "use client";
 
-import { Save, FileText, RefreshCw, X, Upload } from "lucide-react";
+import { Save, FileText, RefreshCw, X, Upload, Sparkles } from "lucide-react";
 import type { CompanyProfile, LegalDocs, LegalDocKey, ApproverEntry } from "@/lib/localData";
 
 interface Props {
@@ -14,12 +14,13 @@ interface Props {
   removeLegalDoc: (key: LegalDocKey) => void;
   approvers: ApproverEntry[];
   updateApprover: (idx: number, nama: string) => void;
+  generateRingkasan: () => void;
 }
 
 export function ProfileTab({
   company, profile, setProfileField, saveProfile,
   legalDocs, legalUploading, handleLegalDocUpload, removeLegalDoc,
-  approvers, updateApprover,
+  approvers, updateApprover, generateRingkasan,
 }: Props) {
   return (
     <div className="p-6 space-y-5">
@@ -135,42 +136,24 @@ export function ProfileTab({
         </div>
       </div>
 
-      <label className="block space-y-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Ringkasan Eksekutif</span>
+      <div className="block space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Ringkasan Eksekutif</span>
+          <button
+            type="button"
+            onClick={generateRingkasan}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition-all"
+          >
+            <Sparkles className="h-3 w-3" /> Generate dari Dokumen
+          </button>
+        </div>
         <textarea
           value={profile.ringkasanEksekutif}
           onChange={(e) => setProfileField("ringkasanEksekutif", e.target.value)}
-          rows={5}
+          rows={8}
           placeholder="Ringkas profil bisnis, kebutuhan kredit, kekuatan utama, dan perhatian analis."
           className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none transition-all placeholder:text-slate-300 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/10"
         />
-      </label>
-
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Tanda Tangan Ringkasan Kredit</p>
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            ["riskAnalystName", "Risk Analyst", "riskAnalystDate"],
-            ["cooName", "COO", "cooDate"],
-            ["ceoName", "CEO", "ceoDate"],
-          ].map(([nameKey, label, dateKey]) => (
-            <div key={nameKey} className="space-y-2">
-              <p className="text-xs font-semibold text-slate-600">{label}</p>
-              <input
-                value={String(profile[nameKey as keyof CompanyProfile] ?? "")}
-                onChange={(e) => setProfileField(nameKey as keyof CompanyProfile, e.target.value)}
-                placeholder="Nama"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none transition-all placeholder:text-slate-300 focus:border-violet-400"
-              />
-              <input
-                type="date"
-                value={String(profile[dateKey as keyof CompanyProfile] ?? "")}
-                onChange={(e) => setProfileField(dateKey as keyof CompanyProfile, e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none transition-all focus:border-violet-400"
-              />
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Approvers Default Global */}

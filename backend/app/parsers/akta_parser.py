@@ -104,30 +104,40 @@ def parse_akta_pdf(file_path: str | Path) -> AktaReport:
 
 
 def _parse_header(text: str, report: AktaReport) -> None:
-    m = re.search(r"(PENDIRIAN\s+PERSEROAN\s+TERBATAS)", text, re.IGNORECASE)
+    m = re.search(
+        r"(PENDIRIAN\s+PERSEROAN\s+TERBATAS|PERNYATAAN\s+KEPUTUSAN\s+RAPAT|PERUBAHAN\s+ANGGARAN\s+DASAR)",
+        text, re.IGNORECASE,
+    )
     if m:
         report.judul = _title(_clean(m.group(1)))
 
-    # Covers: "PT ... NOTARIS DAN PPAT Nomor : 113.-"
-    m = re.search(r"Nomor\s*:\s*([0-9]+)\s*\.?-", text, re.IGNORECASE)
+    # "Nomor : 51.-" or "NOMOR : 113"
+    m = re.search(r"Nomor\s*:\s*([0-9]+)\s*\.?-?", text, re.IGNORECASE)
     if m:
         report.nomor_akta = m.group(1)
 
+    # "Pada hari ini, Jumat, 22-03-2024" (amendment) or "Pada hari ini, Jumat tanggal 27-06-2023"
     m = re.search(
-        r"Pada\s+hari\s+ini,\s*([A-Za-z]+)\s+tanggal\s+(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
+        r"Pada\s+hari\s+ini,\s*([A-Za-z]+)(?:\s+tanggal|,)\s*(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
         text,
         re.IGNORECASE,
     )
     if m:
         report.hari = _title(m.group(1))
         report.tanggal_akta = m.group(2)
+    # Fallback: "TANGGAL : 22-03-2024" from cover page
+    if not report.tanggal_akta:
+        m = re.search(r"TANGGAL\s*:\s*(\d{1,2}[-/]\d{1,2}[-/]\d{4})", text, re.IGNORECASE)
+        if m:
+            report.tanggal_akta = m.group(1)
 
-    m = re.search(r"Pukul\s+([0-9.:]+)\s*WIB", text, re.IGNORECASE)
+    m = re.search(r"[Pp]ukul\s+([0-9.:]+)\s*WIB", text)
     if m:
         report.waktu = f"{m.group(1).replace('.', ':')} WIB"
 
+    # "saya, TIANCA RENIETA, Sarjana Hukum, Magister Kenotariatan,--- Notaris di Kabupaten Tangerang"
     m = re.search(
-        r"saya,\s+(.+?),\s*Sarjana\s+Hukum,\s*Notaris\s+di\s+([^,\n]+)",
+        r"saya,\s+(.+?),\s*Sarjana\s+Hukum(?:,\s*Magister\s+Kenotariatan)?,\s*Notaris\s+di\s+([^,\n]+)",
         text,
         re.IGNORECASE,
     )
@@ -141,15 +151,31 @@ def _parse_header(text: str, report: AktaReport) -> None:
 
 
 def _parse_company_identity(text: str, report: AktaReport) -> None:
-    m = re.search(r"Perseroan\s+terbatas\s+ini\s+bernama\s*:?\s*[-\s“\"]+(.+?)\s+[”\"]?\s*-+\s*\(selanjutnya", text, re.IGNORECASE | re.DOTALL)
+    # Pendirian: "Perseroan terbatas ini bernama : --- "PT XYZ" --- (selanjutnya"
+    m = re.search(r'Perseroan\s+terbatas\s+ini\s+bernama\s*:?\s*[-\s"""\']+(.+?)\s+["""\']?\s*-+\s*\(selanjutnya', text, re.IGNORECASE | re.DOTALL)
     if m:
         report.nama_perusahaan = _normalize_company_name(m.group(1))
-    else:
+
+    # Pendirian fallback: between PENDIRIAN heading and NOTARIS
+    if not report.nama_perusahaan:
         m = re.search(r"PENDIRIAN\s+PERSEROAN\s+TERBATAS\s+(.+?)\s+NOTARIS", text, re.IGNORECASE | re.DOTALL)
         if m:
             report.nama_perusahaan = _normalize_company_name(m.group(1))
 
-    m = re.search(r"berkedudukan\s+di\s+([A-Za-z ]+?)\s*(?:\.|-)", text, re.IGNORECASE)
+    # Amendment: cover page "AKTA : PT. RASA AKSATA NUSANTARA"
+    if not report.nama_perusahaan:
+        m = re.search(r"AKTA\s*:\s*(PT\.?\s+[A-Z][A-Z\s.]+?)(?:\n|NOMOR)", text, re.IGNORECASE)
+        if m:
+            report.nama_perusahaan = _normalize_company_name(m.group(1))
+
+    # Amendment: heading "PERNYATAAN KEPUTUSAN RAPAT\nPT. ..."
+    if not report.nama_perusahaan:
+        m = re.search(r"KEPUTUSAN\s+RAPAT\s*\n\s*(PT\.?\s+[A-Z][A-Z\s.]+?)(?:\n|Nomor)", text, re.IGNORECASE)
+        if m:
+            report.nama_perusahaan = _normalize_company_name(m.group(1))
+
+    # "berkedudukan di Jakarta Utara" — terminates on comma, period, or dash
+    m = re.search(r"berkedudukan\s+di\s+([A-Za-z ]+?)\s*[,.\-]", text, re.IGNORECASE)
     if m:
         report.domisili = _title(_clean(m.group(1)))
 
@@ -212,14 +238,36 @@ def _parse_penghadap(text: str, report: AktaReport) -> None:
 
 
 def _parse_shareholders(text: str, report: AktaReport) -> None:
-    # Matches multi-line founder rows near "Untuk pertama kalinya..."
-    pattern = re.compile(
+    known: set[str] = set()
+
+    # Pendirian: "a. Tuan NAMA; ... sejumlah NNN saham ... Rp NNN"
+    pattern_pendirian = re.compile(
         r"(?:^|\n)\s*[a-z]\.\s+Tuan\s+(.+?);.*?sejumlah\s+([\d.]+).*?saham.*?Rp\.?\s*([\d.,]+)",
         re.IGNORECASE | re.DOTALL,
     )
-    known: set[str] = set()
-    for m in pattern.finditer(text):
+    for m in pattern_pendirian.finditer(text):
         nama = _title(_clean(m.group(1)))
+        if nama in known:
+            continue
+        report.pemegang_saham.append(AktaShareholder(
+            nama=nama,
+            jumlah_saham=_parse_int(m.group(2)),
+            nilai_nominal=_parse_idr(m.group(3)),
+        ))
+        known.add(nama)
+
+    if report.pemegang_saham:
+        return
+
+    # Perubahan: "a. Tuan/Nyonya NAMA, ---\ntersebut, sejumlah NNN ... Saham ... Rp. NNN,-"
+    pattern_perubahan = re.compile(
+        r"(?:^|\n)\s*[a-z]\.\s+(?:Tuan|Nyonya|Nona)\s+(.+?)(?:,\s*tersebut|tersebut).{0,300}?"
+        r"sejumlah\s+([\d.]+)[^.]*?[Ss]aham.{0,300}?Rp\.?\s*([\d.,]+)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    for m in pattern_perubahan.finditer(text):
+        raw_name = re.sub(r"\s*-+\s*\n\s*|\n", " ", m.group(1))  # join across line breaks
+        nama = _title(_clean(raw_name))
         if nama in known:
             continue
         report.pemegang_saham.append(AktaShareholder(
@@ -231,17 +279,44 @@ def _parse_shareholders(text: str, report: AktaReport) -> None:
 
 
 def _parse_officers(text: str, report: AktaReport) -> None:
-    section = _slice_between(text, "telah diangkat sebagai", "Pengangkatan anggota")
+    # Perubahan: structured block "susunan anggota Direksi ... yang baru adalah sebagai berikut"
+    section = _slice_between(text, "susunan anggota Direksi", "Pengangkatan anggota")
+    if not section:
+        section = _slice_between(text, "telah diangkat sebagai", "Pengangkatan anggota")
     if not section:
         section = text
+
     known: set[tuple[str, str]] = set()
-    for m in re.finditer(r"(Direktur|Komisaris)\s*:\s*Tuan\s+(.+?);", section, re.IGNORECASE | re.DOTALL):
+
+    # Matches: "- Direktur Utama ----- : Tuan ISA NURUDDIN AHMAD, -----\n tersebut;"
+    # and:     "- Komisaris --------- : Nyonya JUNI ASDA HUSEIN, -----\n tersebut;"
+    pattern = re.compile(
+        r"(Direktur(?:\s+Utama)?|Komisaris)\s*[-:]+\s*"
+        r"(?:Tuan|Nyonya|Nona)\s+(.+?)(?:,\s*tersebut|tersebut)[;\s]",
+        re.IGNORECASE | re.DOTALL,
+    )
+    for m in pattern.finditer(section):
         jabatan = _title(_clean(m.group(1)))
-        nama = _title(_clean(m.group(2)))
+        raw = re.sub(r"\s*-+\s*\n\s*|\n", " ", m.group(2))  # join lines, strip page nums
+        raw = re.sub(r"\s+\d+\s*$", "", raw)  # strip trailing page number
+        nama = _title(_clean(raw))
         key = (nama, jabatan)
         if key not in known:
             report.pengurus.append(AktaOfficer(nama=nama, jabatan=jabatan))
             known.add(key)
+
+    # Pendirian fallback (no "tersebut"): "Direktur : Tuan NAMA;"
+    if not report.pengurus:
+        for m in re.finditer(
+            r"(Direktur(?:\s+Utama)?|Komisaris)\s*:\s*(?:Tuan|Nyonya|Nona)\s+(.+?);",
+            section, re.IGNORECASE | re.DOTALL,
+        ):
+            jabatan = _title(_clean(m.group(1)))
+            nama = _title(_clean(m.group(2)))
+            key = (nama, jabatan)
+            if key not in known:
+                report.pengurus.append(AktaOfficer(nama=nama, jabatan=jabatan))
+                known.add(key)
 
 
 def _parse_witnesses(text: str, report: AktaReport) -> None:
@@ -294,14 +369,15 @@ def _slice_between(text: str, start: str, end: str) -> str:
 
 def _normalize_text(text: str) -> str:
     text = text.replace("\u2013", "-").replace("\u2014", "-")
-    text = re.sub(r"-{2,}", " ", text)
+    text = re.sub(r"-{2,}", " ", text)          # long dash runs \u2192 space
+    text = re.sub(r"-\s*\n", "\n", text)         # single trailing dash before newline (line continuation)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text
 
 
 def _normalize_company_name(value: str) -> str:
-    value = re.sub(r"[“”\"']", " ", value)
+    value = re.sub(r"[""\"']", " ", value)
     value = re.sub(r"\s*-+\s*", " ", value)
     return _title(_clean(value))
 

@@ -227,22 +227,33 @@ def _build_summaries(report: PnlReport) -> None:
         "cost_of_goods_sold": r"^(jumlah\s+beban\s+pokok\s+penjualan|total\s+cost\s+of\s+goods\s+sold)$",
         "gross_profit":       r"^(laba\s+kotor|gross\s+profit)$",
         "operating_expense":  r"^(jumlah\s+beban\s+operasional|total\s+operating\s+expenses?)$",
-        "operating_profit":   r"^(pendapatan\s+operasional|operating\s+(?:revenue|profit(?:/loss)?))$",
+        "operating_profit":   r"^(laba\s+(?:operasional|usaha)|operating\s+profit(?:/loss)?)$",
         "non_operating":      r"^(jumlah\s+pendapatan\s+dan\s+beban\s+non\s+operasional|total\s+other\s+income\s+and\s+expenses?)$",
         "net_income":         r"^(laba\s+bersih|net\s+profit(?:/loss)?)$",
     }
 
     for key, pattern in summary_patterns.items():
-        item = next(
-            (line for line in report.line_items if re.search(pattern, line.description, re.IGNORECASE)),
-            None,
-        )
+        if key == "non_operating":
+            items = [line for line in report.line_items if re.search(pattern, line.description, re.IGNORECASE)]
+            item = items[-1] if items else None
+        else:
+            item = next(
+                (line for line in report.line_items if re.search(pattern, line.description, re.IGNORECASE)),
+                None,
+            )
         if item is None:
             continue
         summary = dict(item.values)
         if item.total is not None:
             summary["total"] = item.total
         report.summaries[key] = summary
+
+    # Fallback: calculate operating_profit if not explicitly found
+    if "operating_profit" not in report.summaries:
+        gp = report.summaries.get("gross_profit", {}).get("total")
+        opex = report.summaries.get("operating_expense", {}).get("total")
+        if gp is not None and opex is not None:
+            report.summaries["operating_profit"] = {"total": gp - opex}
 
 
 def _month_to_period(month_name: str, year: int) -> str:

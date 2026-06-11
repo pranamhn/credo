@@ -44,7 +44,7 @@ export default function CompanyDetailPage() {
 
   // ── Server data ──────────────────────────────────────────────────────────
   const {
-    summary, statements, slikReports, cbiReports,
+    summary, statements, slikReports, cbiReports, clickReports,
     loading, error, fetchData,
     deletingId, reparsingId, confirmDeleteId, setConfirmDeleteId,
     handleDelete, handleReparse,
@@ -57,7 +57,9 @@ export default function CompanyDetailPage() {
     saveNotes, setProfileField, saveProfile,
     handleLegalDocUpload, removeLegalDoc,
     updateScoringAspect,
-    addDebtEntry, updateDebtEntry, removeDebtEntry, updateDscrCicilanBaru,
+    addDebtEntry, updateDebtEntry, removeDebtEntry, updateDscrCicilanBaru, importDebtEntriesFromCreditBureaus,
+    generateRingkasanFromDocs,
+    importProfileFromParsedDocs,
     updateApprover,
   } = useCompanyLocalState(id);
 
@@ -134,16 +136,16 @@ export default function CompanyDetailPage() {
   );
 
   const { company } = summary;
-  const netFlow     = Number(summary.total_credit) - Number(summary.total_debit);
+  const netFlow = Number(summary.total_credit) - Number(summary.total_debit);
   const creditScore = computeCreditScore(summary, statements, slikReports, memo.collaterals, memo.loanAmount, cbiReports);
-  const rating      = creditScore.rating;
-  const ratingMeta  = RATING_META[rating];
+  const rating = creditScore.rating;
+  const ratingMeta = RATING_META[rating];
 
-  const entityType = /^PT\s/i.test(company.name)    ? "Perseroan Terbatas (PT)"
-    : /^CV\s/i.test(company.name)    ? "Commanditaire Vennootschap (CV)"
-    : /^UD\s/i.test(company.name)    ? "Usaha Dagang (UD)"
-    : /^Firma\s/i.test(company.name) ? "Firma"
-    : "";
+  const entityType = /^PT\s/i.test(company.name) ? "Perseroan Terbatas (PT)"
+    : /^CV\s/i.test(company.name) ? "Commanditaire Vennootschap (CV)"
+      : /^UD\s/i.test(company.name) ? "Usaha Dagang (UD)"
+        : /^Firma\s/i.test(company.name) ? "Firma"
+          : "";
 
   const lamaBerdiri = (() => {
     if (!profile.tanggalBerdiri) return "";
@@ -164,13 +166,13 @@ export default function CompanyDetailPage() {
   const slikDerived = (() => {
     if (!slikReports.length && !cbiReports.length) return null;
     const slikFas = slikReports.flatMap((r) => r.parsed_data?.fasilitas ?? []);
-    const cbiFas  = cbiReports.flatMap((r) => r.parsed_data?.fasilitas_aktif ?? []);
+    const cbiFas = cbiReports.flatMap((r) => r.parsed_data?.fasilitas_aktif ?? []);
     const allKolBaki = [
       ...slikFas.map((f) => ({ kol: parseInt(f.kualitas.replace(/\D/g, ""), 10), baki: f.baki_debet ?? 0 })),
-      ...cbiFas.map((f)  => ({ kol: parseInt(f.kolektabilitas.replace(/\D/g, ""), 10), baki: f.baki_debet ?? 0 })),
+      ...cbiFas.map((f) => ({ kol: parseInt(f.kolektabilitas.replace(/\D/g, ""), 10), baki: f.baki_debet ?? 0 })),
     ];
     if (!allKolBaki.length) return null;
-    const worstKol  = allKolBaki.reduce((w, f) => (isNaN(f.kol) ? w : Math.max(w, f.kol)), 1);
+    const worstKol = allKolBaki.reduce((w, f) => (isNaN(f.kol) ? w : Math.max(w, f.kol)), 1);
     const totalBaki = allKolBaki.reduce((s, f) => s + f.baki, 0);
     const jmlKreditur = (slikReports[0]?.jumlah_kreditur ?? slikFas.length) +
       (cbiReports[0]?.jumlah_kreditur_aktif ?? 0);
@@ -178,25 +180,32 @@ export default function CompanyDetailPage() {
     const bankDocs = statements.filter((s) => s.document_type === "bank_statement" && s.period_start && s.period_end);
     let totalMonths = 1;
     if (bankDocs.length > 0) {
-      const sorted    = [...bankDocs].sort((a, b) => (a.period_start ?? "").localeCompare(b.period_start ?? ""));
-      const earliest  = sorted[0];
+      const sorted = [...bankDocs].sort((a, b) => (a.period_start ?? "").localeCompare(b.period_start ?? ""));
+      const earliest = sorted[0];
       const latestDoc = sorted.at(-1)!;
-      const [ey, em]  = (earliest.period_start ?? "").slice(0, 7).split("-").map(Number);
-      const [ly, lm]  = (latestDoc.period_end  ?? "").slice(0, 7).split("-").map(Number);
+      const [ey, em] = (earliest.period_start ?? "").slice(0, 7).split("-").map(Number);
+      const [ly, lm] = (latestDoc.period_end ?? "").slice(0, 7).split("-").map(Number);
       totalMonths = Math.max(1, (ly - ey) * 12 + (lm - em) + 1);
     } else {
       totalMonths = Math.max(1, summary.bank_statement_count);
     }
-    const monthlyIncome      = Number(summary.total_credit) / totalMonths;
+    const monthlyIncome = Number(summary.total_credit) / totalMonths;
     const estCicilanPerBulan = totalBaki > 0 ? totalBaki / 36 : 0;
     const dsr = monthlyIncome > 0 && estCicilanPerBulan > 0 ? estCicilanPerBulan / monthlyIncome : null;
     const kolLabel = worstKol === 1 ? "Lancar"
       : worstKol === 2 ? "Dalam Perhatian Khusus"
-      : worstKol === 3 ? "Kurang Lancar"
-      : worstKol === 4 ? "Diragukan"
-      : "Macet";
+        : worstKol === 3 ? "Kurang Lancar"
+          : worstKol === 4 ? "Diragukan"
+            : "Macet";
     return { worstKol, totalBaki, jmlKreditur, jmlFasilitas, monthlyIncome, estCicilanPerBulan, dsr, kolLabel };
   })();
+
+  const importDebtEntries = () => {
+    const slikFas = slikReports.flatMap((r) => r.parsed_data?.fasilitas ?? []);
+    const cbiFas = cbiReports.flatMap((r) => r.parsed_data?.fasilitas_aktif ?? []);
+    const clickFas = clickReports.flatMap((r) => r.parsed_data?.fasilitas_aktif ?? []);
+    importDebtEntriesFromCreditBureaus(slikFas, cbiFas, clickFas);
+  };
 
   const TABS: {
     key: ActiveTab;
@@ -206,20 +215,20 @@ export default function CompanyDetailPage() {
     active: string;
     idle: string;
   }[] = [
-    { key: "ringkasan", label: "Ringkasan Kredit",   helper: "Rating risiko, faktor risiko, dan catatan analis",    icon: ShieldCheck, active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-emerald-50 text-emerald-600" },
-    { key: "profil",    label: "Profil Perusahaan",  helper: "Identitas, legalitas, dan ringkasan eksekutif",       icon: Building2,   active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-violet-50 text-violet-600" },
-    { key: "dokumen",   label: "Dokumen",            helper: "Upload, kalender dokumen, dan hasil parsing",          icon: FolderOpen,  active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-violet-50 text-violet-600" },
-    { key: "grafik",    label: "Analisis Tren",      helper: "Grafik mutasi, saldo, dan tren keuangan",             icon: BarChart3,   active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-indigo-50 text-indigo-600" },
-  ];
+      { key: "ringkasan", label: "Ringkasan Kredit", helper: "Rating risiko, faktor risiko, dan catatan analis", icon: ShieldCheck, active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-emerald-50 text-emerald-600" },
+      { key: "profil", label: "Profil Perusahaan", helper: "Identitas, legalitas, dan ringkasan eksekutif", icon: Building2, active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-violet-50 text-violet-600" },
+      { key: "dokumen", label: "Dokumen", helper: "Upload, kalender dokumen, dan hasil parsing", icon: FolderOpen, active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-violet-50 text-violet-600" },
+      { key: "grafik", label: "Analisis Tren", helper: "Grafik mutasi, saldo, dan tren keuangan", icon: BarChart3, active: "bg-violet-50 text-violet-700 ring-1 ring-violet-200", idle: "bg-indigo-50 text-indigo-600" },
+    ];
 
   const printSummary = () => handlePrint(summary, rating, notes, netFlow, profile, memo, {
     ewsTier,
     coverage: [
       { label: "Bank Statement", has: summary.bank_statement_count > 0 },
-      { label: "Profit & Loss",  has: summary.profit_loss_count > 0 },
-      { label: "Cash Flow",      has: summary.cash_flow_count > 0 },
-      { label: "Balance Sheet",  has: summary.balance_sheet_count > 0 },
-      { label: "SLIK / IDEB",    has: slikReports.length > 0 },
+      { label: "Profit & Loss", has: summary.profit_loss_count > 0 },
+      { label: "Cash Flow", has: summary.cash_flow_count > 0 },
+      { label: "Balance Sheet", has: summary.balance_sheet_count > 0 },
+      { label: "SLIK / IDEB", has: slikReports.length > 0 },
     ],
     pnlComparison,
     bsComparison,
@@ -230,6 +239,7 @@ export default function CompanyDetailPage() {
     dscrCicilanBaru,
     creditScore,
     slikDerived,
+    approvers,
   });
 
   return (
@@ -300,6 +310,7 @@ export default function CompanyDetailPage() {
                 removeLegalDoc={removeLegalDoc}
                 approvers={approvers}
                 updateApprover={updateApprover}
+                generateRingkasan={() => generateRingkasanFromDocs(statements, company.name, Number(summary.total_credit), slikReports, cbiReports, clickReports)}
               />
             )}
 
@@ -333,7 +344,10 @@ export default function CompanyDetailPage() {
                 addDebtEntry={addDebtEntry}
                 updateDebtEntry={updateDebtEntry}
                 removeDebtEntry={removeDebtEntry}
+                importDebtEntries={importDebtEntries}
+                importProfile={() => importProfileFromParsedDocs(statements)}
                 updateScoringAspect={updateScoringAspect}
+                approvers={approvers}
               />
             )}
 

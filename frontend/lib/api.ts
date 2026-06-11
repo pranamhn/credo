@@ -281,6 +281,72 @@ export interface CbiReport {
   created_at: string;
 }
 
+export interface ClickFasilitas {
+  kreditur: string;
+  jenis_kredit: string;
+  plafon: number | null;
+  baki_debet: number | null;
+  bunga: string;
+  tanggal_mulai: string;
+  tanggal_jatuh_tempo: string;
+  kualitas: string;
+  status: "aktif" | "selesai";
+}
+
+export interface ClickReport {
+  id: string;
+  company_id: string | null;
+  original_filename: string;
+  tanggal_laporan: string | null;
+  nama_debitur: string | null;
+  no_identitas: string | null;
+  cb_score: number | null;
+  risk_grade: string | null;
+  jumlah_kontrak: number | null;
+  jumlah_kreditur: number | null;
+  raw_pages: number | null;
+  parse_error: string | null;
+  parsed_data: {
+    tanggal_laporan: string;
+    subject: {
+      nama: string;
+      no_identitas: string;
+      jenis_kelamin: string;
+      tanggal_lahir: string;
+      tempat_lahir: string;
+    };
+    cb_score: number | null;
+    risk_grade: string;
+    jumlah_kontrak: number;
+    jumlah_kreditur: number;
+    total_credit_limit: number | null;
+    total_debit_balance: number | null;
+    total_overdue: number | null;
+    fasilitas_aktif: ClickFasilitas[];
+    fasilitas_selesai: ClickFasilitas[];
+    raw_pages: number;
+  } | null;
+  created_at: string;
+}
+
+export const clickApi = {
+  upload: (file: File, companyId?: string, onUploadProgress?: (event: AxiosProgressEvent) => void) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (companyId) form.append("company_id", companyId);
+    return api.post<ClickReport>("/click/upload", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress,
+    });
+  },
+  list: (companyId?: string) =>
+    api.get<ClickReport[]>("/click/", { params: companyId ? { company_id: companyId } : {} }),
+  get: (id: string) => api.get<ClickReport>(`/click/${id}`),
+  assignCompany: (id: string, companyId: string | null) =>
+    api.patch<ClickReport>(`/click/${id}/company`, { company_id: companyId }),
+  delete: (id: string) => api.delete(`/click/${id}`),
+};
+
 export const cbiApi = {
   upload: (file: File, companyId?: string, onUploadProgress?: (event: AxiosProgressEvent) => void) => {
     const form = new FormData();

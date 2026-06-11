@@ -1,7 +1,7 @@
 // Runs in the browser only (uses window.open, window.location).
 import { toast } from "sonner";
 import type { CompanySummary } from "@/lib/api";
-import type { CreditMemo, CompanyProfile, ScoringAspect, DebtEntry } from "@/lib/localData";
+import type { CreditMemo, CompanyProfile, ScoringAspect, DebtEntry, ApproverEntry } from "@/lib/localData";
 import { formatIDR, formatDate } from "@/lib/utils";
 import { RATING_META, MONTHS_ID } from "./company-detail-constants";
 import type { Rating, MonthlyData, CreditScoreBreakdown } from "./company-detail-types";
@@ -23,6 +23,7 @@ export interface PrintData {
   dscrCicilanBaru: number;
   creditScore: CreditScoreBreakdown;
   slikDerived: SlikDerivedPrint;
+  approvers: ApproverEntry[];
 }
 
 export function handlePrint(
@@ -47,9 +48,9 @@ export function handlePrint(
   // Derive entity type from company name prefix
   const name = summary.company.name;
   let entityType = "";
-  if (/^PT\s/i.test(name))         entityType = "Perseroan Terbatas (PT)";
-  else if (/^CV\s/i.test(name))    entityType = "Commanditaire Vennootschap (CV)";
-  else if (/^UD\s/i.test(name))    entityType = "Usaha Dagang (UD)";
+  if (/^PT\s/i.test(name)) entityType = "Perseroan Terbatas (PT)";
+  else if (/^CV\s/i.test(name)) entityType = "Commanditaire Vennootschap (CV)";
+  else if (/^UD\s/i.test(name)) entityType = "Usaha Dagang (UD)";
   else if (/^Firma\s/i.test(name)) entityType = "Firma";
 
   // Calculate company age from DD/MM/YYYY
@@ -69,24 +70,18 @@ export function handlePrint(
     `<table class="data"><thead><tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c ?? "—")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   const section = (title: string, body: string, className = "") =>
     `<section class="section ${className}"><div class="section-title">${esc(title)}</div>${body}</section>`;
-  const signatureBody = [profile.riskAnalystName, profile.cooName, profile.ceoName].some(Boolean)
-    ? `<div class="sign-grid">${[
-        ["Risk Analyst", profile.riskAnalystName, profile.riskAnalystDate],
-        ["COO", profile.cooName, profile.cooDate],
-        ["CEO", profile.ceoName, profile.ceoDate],
-      ].map(([jabatan, nama, tanggal]) => `<div class="sign"><div class="sign-line"></div><div class="sign-name">${esc(nama || "—")}</div><div class="sign-role">${esc(jabatan)}</div>${tanggal ? `<div class="sign-date">${esc(formatDate(tanggal))}</div>` : ""}</div>`).join("")}</div>`
+  const signatureBody = printData.approvers.length > 0
+    ? `<div class="sign-grid">${printData.approvers.map((a) => `<div class="sign"><div class="sign-line"></div><div class="sign-name">${esc(a.nama || "—")}</div><div class="sign-role">${esc(a.jabatan)}</div></div>`).join("")}</div>`
     : "";
   const existingAnnual = printData.debtEntries.reduce((s, e) => s + Number(e.cicilanPerBulan || 0), 0) * 12;
   const newAnnual = Number(printData.dscrCicilanBaru || 0) * 12;
   const totalAnnual = existingAnnual + newAnnual;
-  const netIncome = printData.pnlComparison?.rows?.find?.((r: any) => r.key === "net_income")?.latestTotal ?? null;
-  const annualizedNetIncome = printData.pnlComparison?.latestMo && printData.pnlComparison.latestMo < 12 && netIncome !== null
-    ? (netIncome / printData.pnlComparison.latestMo) * 12
-    : netIncome;
-  const dscr = annualizedNetIncome !== null && totalAnnual > 0 ? annualizedNetIncome / totalAnnual : null;
+  const opRow = printData.pnlComparison?.rows?.find?.((r: any) => r.key === "operating_profit");
+  const ebitda = opRow?.annualizedTotal ?? opRow?.latestTotal ?? null;
+  const dscr = ebitda !== null && totalAnnual > 0 ? ebitda / totalAnnual : null;
   const totalMonthlyCredit = printData.monthlyData.reduce((s, m) => s + m.credit, 0);
-  const totalMonthlyDebit  = printData.monthlyData.reduce((s, m) => s + m.debit, 0);
-  const totalMonthlyNet    = totalMonthlyCredit - totalMonthlyDebit;
+  const totalMonthlyDebit = printData.monthlyData.reduce((s, m) => s + m.debit, 0);
+  const totalMonthlyNet = totalMonthlyCredit - totalMonthlyDebit;
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Laporan Analisis Kredit — ${esc(name)}</title>
 <style>
@@ -186,22 +181,21 @@ ${section("Rating Risiko Kredit", `
 `)}
 
 ${section("Credit Score Breakdown", (() => {
-  const cs = printData.creditScore;
-  const dims = [
-    { label: "Keuangan", score: cs.keuangan, max: 40, isDefault: false },
-    { label: "Cashflow Bank Statement", score: cs.cashflow, max: 25, isDefault: false },
-    { label: "Kolektibilitas SLIK", score: cs.slik, max: 20, isDefault: cs.slikDefault },
-    { label: "Agunan / Collateral", score: cs.agunan, max: 10, isDefault: cs.agunanDefault },
-    { label: "Karakter / Kualitatif", score: cs.karakter, max: 5, isDefault: false },
-  ];
-  return `<table class="data"><thead><tr><th>Dimensi</th><th>Skor</th><th>Maks</th><th style="min-width:120px">Progress</th></tr></thead><tbody>${
-    dims.map(({ label, score, max, isDefault }) => {
+    const cs = printData.creditScore;
+    const dims = [
+      { label: "Keuangan", score: cs.keuangan, max: 40, isDefault: false },
+      { label: "Cashflow Bank Statement", score: cs.cashflow, max: 25, isDefault: false },
+      { label: "Kolektibilitas SLIK", score: cs.slik, max: 20, isDefault: cs.slikDefault },
+      { label: "Agunan / Collateral", score: cs.agunan, max: 10, isDefault: cs.agunanDefault },
+      { label: "Karakter / Kualitatif", score: cs.karakter, max: 5, isDefault: false },
+    ];
+    return `<table class="data"><thead><tr><th>Dimensi</th><th>Skor</th><th>Maks</th><th style="min-width:120px">Progress</th></tr></thead><tbody>${dims.map(({ label, score, max, isDefault }) => {
       const pct = Math.round((score / max) * 100);
       const color = pct >= 75 ? "#10b981" : pct >= 50 ? "#14b8a6" : pct >= 25 ? "#f59e0b" : "#ef4444";
       return `<tr><td>${esc(label)}${isDefault ? ' <em style="font-size:9px;color:#94a3b8">(estimasi)</em>' : ""}</td><td>${score}</td><td style="color:#94a3b8">${max}</td><td style="padding:7px 8px"><div style="background:#f1f5f9;border-radius:4px;height:5px"><div style="background:${color};border-radius:4px;height:5px;width:${pct}%"></div></div></td></tr>`;
     }).join("")
-  }<tr style="border-top:2px solid #e2e8f0;background:#f8fafc"><td style="font-weight:800;color:#0f172a">Total</td><td style="font-weight:900;font-size:13px;color:#0f172a">${cs.total}</td><td style="color:#94a3b8">100</td><td></td></tr></tbody></table>`;
-})())}
+      }<tr style="border-top:2px solid #e2e8f0;background:#f8fafc"><td style="font-weight:800;color:#0f172a">Total</td><td style="font-weight:900;font-size:13px;color:#0f172a">${cs.total}</td><td style="color:#94a3b8">100</td><td></td></tr></tbody></table>`;
+  })())}
 
 ${section("Faktor Risiko", `
   <div class="grid">
@@ -215,97 +209,97 @@ ${section("Faktor Risiko", `
 ${section("Kelengkapan Dokumen", `<div class="pill-row">${printData.coverage.map((item) => `<span class="pill ${item.has ? "ok" : "miss"}">${item.has ? "✓" : "○"} ${esc(item.label)}</span>`).join("")}</div>`)}
 
 ${printData.slikDerived ? section("II. Insight iDeb / SLIK", (() => {
-  const sd = printData.slikDerived!;
-  const kolColor = sd.worstKol === 1 ? "#047857" : sd.worstKol === 2 ? "#b45309" : "#dc2626";
-  const kolBg    = sd.worstKol === 1 ? "#ecfdf5"  : sd.worstKol === 2 ? "#fffbeb"  : "#fef2f2";
-  const kolBdr   = sd.worstKol === 1 ? "#a7f3d0"  : sd.worstKol === 2 ? "#fde68a"  : "#fecaca";
-  const dsrColor = sd.dsr === null ? "#94a3b8" : sd.dsr <= 0.35 ? "#047857" : sd.dsr <= 0.5 ? "#b45309" : "#dc2626";
-  const dsrLabel = sd.dsr === null ? "—" : `${(sd.dsr * 100).toFixed(1)}% — ${sd.dsr <= 0.35 ? "Aman" : sd.dsr <= 0.5 ? "Perhatian" : "Tinggi"}`;
-  return `<div style="padding:8px 16px 4px"><span style="display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:10px;font-weight:700;background:${kolBg};color:${kolColor};border:1px solid ${kolBdr}">Kol ${sd.worstKol} — ${esc(sd.kolLabel)}</span></div>
+    const sd = printData.slikDerived!;
+    const kolColor = sd.worstKol === 1 ? "#047857" : sd.worstKol === 2 ? "#b45309" : "#dc2626";
+    const kolBg = sd.worstKol === 1 ? "#ecfdf5" : sd.worstKol === 2 ? "#fffbeb" : "#fef2f2";
+    const kolBdr = sd.worstKol === 1 ? "#a7f3d0" : sd.worstKol === 2 ? "#fde68a" : "#fecaca";
+    const dsrColor = sd.dsr === null ? "#94a3b8" : sd.dsr <= 0.35 ? "#047857" : sd.dsr <= 0.5 ? "#b45309" : "#dc2626";
+    const dsrLabel = sd.dsr === null ? "—" : `${(sd.dsr * 100).toFixed(1)}% — ${sd.dsr <= 0.35 ? "Aman" : sd.dsr <= 0.5 ? "Perhatian" : "Tinggi"}`;
+    return `<div style="padding:8px 16px 4px"><span style="display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:10px;font-weight:700;background:${kolBg};color:${kolColor};border:1px solid ${kolBdr}">Kol ${sd.worstKol} — ${esc(sd.kolLabel)}</span></div>
 <div class="grid"><div class="metric"><div class="metric-label">Kreditur</div><div class="metric-value">${sd.jmlKreditur}</div></div><div class="metric"><div class="metric-label">Fasilitas</div><div class="metric-value">${sd.jmlFasilitas}</div></div><div class="metric"><div class="metric-label">Total Baki Debet</div><div class="metric-value">${idr(sd.totalBaki)}</div></div><div class="metric"><div class="metric-label">DSR</div><div class="metric-value" style="color:${dsrColor}">${dsrLabel}</div></div></div>
 <div class="grid" style="grid-template-columns:repeat(2,1fr);margin-top:0"><div class="metric"><div class="metric-label">Est. Pendapatan/Bln</div><div class="metric-value">${idr(sd.monthlyIncome)}</div></div><div class="metric"><div class="metric-label">Est. Cicilan Existing/Bln</div><div class="metric-value">${idr(sd.estCicilanPerBulan)}</div></div></div>`;
-})()) : ""}
+  })()) : ""}
 
 ${printData.pnlComparison ? section("III-A. Laporan Laba Rugi", simpleTable(
-  [
-    "Pos",
-    ...(printData.pnlComparison.priorLabel ? [printData.pnlComparison.priorLabel] : []),
-    printData.pnlComparison.latestLabel,
-    ...(printData.pnlComparison.latestMo < 12 ? ["Annualized"] : []),
-    ...(printData.pnlComparison.priorLabel ? ["Est. Growth"] : []),
-  ],
-  printData.pnlComparison.rows.map((r: any) => [
-    r.label,
-    ...(printData.pnlComparison.priorLabel ? [idr(r.priorTotal)] : []),
-    idr(r.latestTotal),
-    ...(printData.pnlComparison.latestMo < 12 ? [idr(r.annualizedTotal)] : []),
-    ...(printData.pnlComparison.priorLabel ? [pct(r.estGrowthPct)] : []),
-  ])
-)) : section("III-A. Laporan Laba Rugi", `<p class="sub">Upload dokumen Profit &amp; Loss untuk melihat Laporan Laba Rugi.</p>`)}
+    [
+      "Pos",
+      ...(printData.pnlComparison.priorLabel ? [printData.pnlComparison.priorLabel] : []),
+      printData.pnlComparison.latestLabel,
+      ...(printData.pnlComparison.latestMo < 12 ? ["Annualized"] : []),
+      ...(printData.pnlComparison.priorLabel ? ["Est. Growth"] : []),
+    ],
+    printData.pnlComparison.rows.map((r: any) => [
+      r.label,
+      ...(printData.pnlComparison.priorLabel ? [idr(r.priorTotal)] : []),
+      idr(r.latestTotal),
+      ...(printData.pnlComparison.latestMo < 12 ? [idr(r.annualizedTotal)] : []),
+      ...(printData.pnlComparison.priorLabel ? [pct(r.estGrowthPct)] : []),
+    ])
+  )) : section("III-A. Laporan Laba Rugi", `<p class="sub">Upload dokumen Profit &amp; Loss untuk melihat Laporan Laba Rugi.</p>`)}
 
 ${printData.bsComparison ? section("III-B. Neraca (Balance Sheet)", simpleTable(
-  [
-    "Pos",
-    ...(printData.bsComparison.priorLabel ? [printData.bsComparison.priorLabel] : []),
-    printData.bsComparison.latestLabel,
-    ...(printData.bsComparison.remainingMonths !== null && printData.bsComparison.remainingMonths > 0 ? ["Proj. Dec"] : []),
-    ...(printData.bsComparison.priorLabel ? ["Growth"] : []),
-  ],
-  printData.bsComparison.rows.map((r: any) => [
-    r.label,
-    ...(printData.bsComparison.priorLabel ? [idr(r.priorValue)] : []),
-    idr(r.latestValue),
-    ...(printData.bsComparison.remainingMonths !== null && printData.bsComparison.remainingMonths > 0 ? [idr(r.projectedValue)] : []),
-    ...(printData.bsComparison.priorLabel ? [pct(r.growthPct)] : []),
-  ])
-)) : section("III-B. Neraca (Balance Sheet)", `<p class="sub">Upload dokumen Balance Sheet untuk melihat Neraca.</p>`)}
+    [
+      "Pos",
+      ...(printData.bsComparison.priorLabel ? [printData.bsComparison.priorLabel] : []),
+      printData.bsComparison.latestLabel,
+      ...(printData.bsComparison.remainingMonths !== null && printData.bsComparison.remainingMonths > 0 ? ["Proj. Dec"] : []),
+      ...(printData.bsComparison.priorLabel ? ["Growth"] : []),
+    ],
+    printData.bsComparison.rows.map((r: any) => [
+      r.label,
+      ...(printData.bsComparison.priorLabel ? [idr(r.priorValue)] : []),
+      idr(r.latestValue),
+      ...(printData.bsComparison.remainingMonths !== null && printData.bsComparison.remainingMonths > 0 ? [idr(r.projectedValue)] : []),
+      ...(printData.bsComparison.priorLabel ? [pct(r.growthPct)] : []),
+    ])
+  )) : section("III-B. Neraca (Balance Sheet)", `<p class="sub">Upload dokumen Balance Sheet untuk melihat Neraca.</p>`)}
 
 ${section("III-C. Arus Kas Rekening Koran", printData.monthlyData.length ? simpleTable(
-  ["Bulan", "Total Masuk", "Total Keluar", "Net Cash Flow", "Saldo Akhir"],
-  [
-    ...printData.monthlyData.map((m) => [
-      `${MONTHS_ID[parseInt(m.month.slice(5, 7)) - 1]} ${m.month.slice(0, 4)}`,
-      idr(m.credit),
-      idr(m.debit),
-      `${m.credit - m.debit >= 0 ? "+" : "−"}${idr(Math.abs(m.credit - m.debit))}`,
-      idr(m.balance),
-    ]),
-    ["Total", idr(totalMonthlyCredit), idr(totalMonthlyDebit), `${totalMonthlyNet >= 0 ? "+" : "−"}${idr(Math.abs(totalMonthlyNet))}`, idr(printData.monthlyData.at(-1)?.balance ?? 0)],
-  ]
-) : `<p class="sub">Upload Bank Statement untuk melihat arus kas bulanan.</p>`)}
+    ["Bulan", "Total Masuk", "Total Keluar", "Net Cash Flow", "Saldo Akhir"],
+    [
+      ...printData.monthlyData.map((m) => [
+        `${MONTHS_ID[parseInt(m.month.slice(5, 7)) - 1]} ${m.month.slice(0, 4)}`,
+        idr(m.credit),
+        idr(m.debit),
+        `${m.credit - m.debit >= 0 ? "+" : "−"}${idr(Math.abs(m.credit - m.debit))}`,
+        idr(m.balance),
+      ]),
+      ["Total", idr(totalMonthlyCredit), idr(totalMonthlyDebit), `${totalMonthlyNet >= 0 ? "+" : "−"}${idr(Math.abs(totalMonthlyNet))}`, idr(printData.monthlyData.at(-1)?.balance ?? 0)],
+    ]
+  ) : `<p class="sub">Upload Bank Statement untuk melihat arus kas bulanan.</p>`)}
 
 ${printData.derivedRatios ? section("IV. Analisa Rasio Keuangan", (() => {
-  const dr = printData.derivedRatios;
-  const statusBadge = (tier: "ok" | "warn" | "bad" | null) =>
-    tier === "ok" ? '<span class="s-ok">BAIK</span>'
-    : tier === "warn" ? '<span class="s-warn">CUKUP</span>'
-    : tier === "bad"  ? '<span class="s-bad">RENDAH</span>'
-    : "—";
-  const ratioTier = (v: number | null, hi: number, lo: number) =>
-    v === null ? null : v >= hi ? "ok" : v >= lo ? "warn" : "bad";
-  const invTier = (v: number | null, good: number, warn: number): "ok"|"warn"|"bad"|null =>
-    v === null ? null : v < good ? "ok" : v < warn ? "warn" : "bad";
-  const rows: [string, string, string][] = [
-    ["Gross Profit Margin (GPM)", pct(dr.grossMargin),  statusBadge(ratioTier(dr.grossMargin, 30, 15))],
-    ["Net Profit Margin (NPM)",   pct(dr.netMargin),    statusBadge(ratioTier(dr.netMargin, 10, 5))],
-    ["Return on Assets (ROA)",    pct(dr.roa),          statusBadge(ratioTier(dr.roa, 5, 2))],
-    ["Return on Equity (ROE)",    pct(dr.roe),          statusBadge(ratioTier(dr.roe, 15, 8))],
-    ["EBITDA Margin",             pct(dr.ebitdaMargin), statusBadge(ratioTier(dr.ebitdaMargin, 20, 10))],
-    ["Debt-to-Equity (DER)",      dr.der == null ? "—" : `${dr.der.toFixed(2)}x`, statusBadge(invTier(dr.der, 2, 3))],
-    ["Debt-to-Asset (DAR)",       pct(dr.dar),          statusBadge(invTier(dr.dar, 50, 75))],
-  ];
-  return `<table class="data"><thead><tr><th>Rasio</th><th>Nilai</th><th>Status</th></tr></thead><tbody>
+    const dr = printData.derivedRatios;
+    const statusBadge = (tier: "ok" | "warn" | "bad" | null) =>
+      tier === "ok" ? '<span class="s-ok">BAIK</span>'
+        : tier === "warn" ? '<span class="s-warn">CUKUP</span>'
+          : tier === "bad" ? '<span class="s-bad">RENDAH</span>'
+            : "—";
+    const ratioTier = (v: number | null, hi: number, lo: number) =>
+      v === null ? null : v >= hi ? "ok" : v >= lo ? "warn" : "bad";
+    const invTier = (v: number | null, good: number, warn: number): "ok" | "warn" | "bad" | null =>
+      v === null ? null : v < good ? "ok" : v < warn ? "warn" : "bad";
+    const rows: [string, string, string][] = [
+      ["Gross Profit Margin (GPM)", pct(dr.grossMargin), statusBadge(ratioTier(dr.grossMargin, 30, 15))],
+      ["Net Profit Margin (NPM)", pct(dr.netMargin), statusBadge(ratioTier(dr.netMargin, 10, 5))],
+      ["Return on Assets (ROA)", pct(dr.roa), statusBadge(ratioTier(dr.roa, 5, 2))],
+      ["Return on Equity (ROE)", pct(dr.roe), statusBadge(ratioTier(dr.roe, 15, 8))],
+      ["EBITDA Margin", pct(dr.ebitdaMargin), statusBadge(ratioTier(dr.ebitdaMargin, 20, 10))],
+      ["Debt-to-Equity (DER)", dr.der == null ? "—" : `${dr.der.toFixed(2)}x`, statusBadge(invTier(dr.der, 2, 3))],
+      ["Debt-to-Asset (DAR)", pct(dr.dar), statusBadge(invTier(dr.dar, 50, 75))],
+    ];
+    return `<table class="data"><thead><tr><th>Rasio</th><th>Nilai</th><th>Status</th></tr></thead><tbody>
 <tr class="sub-hdr"><td colspan="3">Profitabilitas</td></tr>
 ${rows.slice(0, 5).map(([r, v, s]) => `<tr><td>${r}</td><td>${v}</td><td>${s}</td></tr>`).join("")}
 <tr class="sub-hdr"><td colspan="3">Leverage &amp; Solvabilitas</td></tr>
 ${rows.slice(5).map(([r, v, s]) => `<tr><td>${r}</td><td>${v}</td><td>${s}</td></tr>`).join("")}
 </tbody></table>`;
-})()) : ""}
+  })()) : ""}
 
 ${printData.scoringAspects.length ? section("V. Scoring Aspek Kredit", simpleTable(
-  ["Aspek", "Bobot", "Skor", "W.Score", "Catatan"],
-  printData.scoringAspects.map((a) => [a.label, `${a.bobot}%`, a.skor, ((a.bobot * a.skor) / 100).toFixed(2), a.catatan])
-)) : ""}
+    ["Aspek", "Bobot", "Skor", "W.Score", "Catatan"],
+    printData.scoringAspects.map((a) => [a.label, `${a.bobot}%`, a.skor, ((a.bobot * a.skor) / 100).toFixed(2), a.catatan])
+  )) : ""}
 
 ${section("VI. Rincian Hutang & DSCR", `
   ${printData.debtEntries.length ? simpleTable(
@@ -314,7 +308,7 @@ ${section("VI. Rincian Hutang & DSCR", `
   ) : `<p class="sub">Belum ada data hutang existing.</p>`}
   <div class="grid" style="margin-top:10px">
     <div class="metric"><div class="metric-label">Total Debt Service / Thn</div><div class="metric-value">${idr(totalAnnual)}</div></div>
-    <div class="metric"><div class="metric-label">Net Income Annualized</div><div class="metric-value">${idr(annualizedNetIncome)}</div></div>
+    <div class="metric"><div class="metric-label">EBITDA Annualized</div><div class="metric-value">${idr(ebitda)}</div></div>
     <div class="metric"><div class="metric-label">DSCR</div><div class="metric-value">${dscr !== null ? `${dscr.toFixed(2)}x` : "—"}</div></div>
   </div>
 `)}

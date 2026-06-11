@@ -18,7 +18,7 @@ from app.config import settings
 from app.database import get_db
 from app.models import Company, Statement, Transaction, RiskResult, AuditLog
 from app.models.statement import StatementStatus
-from app.schemas.statement import StatementRead, TransactionRead, TransactionPatch
+from app.schemas.statement import AssignBody, StatementRead, TransactionRead, TransactionPatch
 from app.schemas.risk import RiskResultRead
 
 router = APIRouter(prefix="/statements", tags=["statements"])
@@ -539,17 +539,16 @@ async def list_transactions(
 @router.patch("/{statement_id}/assign", response_model=StatementRead)
 async def assign_company(
     statement_id: uuid.UUID,
-    body: dict,
+    body: AssignBody,
     db: AsyncSession = Depends(get_db),
 ):
     stmt = await db.get(Statement, statement_id)
     if not stmt:
         raise HTTPException(404, "Statement not found")
-    company_id = body.get("company_id")
-    if company_id:
-        if not await db.get(Company, uuid.UUID(company_id)):
+    if body.company_id:
+        if not await db.get(Company, body.company_id):
             raise HTTPException(404, "Company not found")
-        stmt.company_id = uuid.UUID(company_id)
+        stmt.company_id = body.company_id  # type: ignore[assignment]
     else:
         stmt.company_id = None  # type: ignore[assignment]
     await db.commit()

@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText, Trash2, ChevronDown, ChevronUp, AlertCircle, Building2, Plus, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/ui-kit";
-import { slikApi, cbiApi, companiesApi, SlikReport, CbiReport, CompanySummary } from "@/lib/api";
+import { slikApi, cbiApi, clickApi, companiesApi, SlikReport, CbiReport, ClickReport, CompanySummary } from "@/lib/api";
 import { toast } from "sonner";
 
 function formatIDR(n: number | null | undefined): string {
@@ -28,10 +28,13 @@ export default function IdebtParserPage() {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [slikReports, setSlikReports] = useState<SlikReport[]>([]);
   const [cbiReports, setCbiReports] = useState<CbiReport[]>([]);
+  const [clickReports, setClickReports] = useState<ClickReport[]>([]);
   const [selectedSlik, setSelectedSlik] = useState<SlikReport | null>(null);
   const [selectedCbi, setSelectedCbi] = useState<CbiReport | null>(null);
+  const [selectedClick, setSelectedClick] = useState<ClickReport | null>(null);
   const [loadedSlik, setLoadedSlik] = useState(false);
   const [loadedCbi, setLoadedCbi] = useState(false);
+  const [loadedClick, setLoadedClick] = useState(false);
   const [assigningReportId, setAssigningReportId] = useState<string | null>(null);
 
   // Upload modal
@@ -45,6 +48,7 @@ export default function IdebtParserPage() {
   useEffect(() => { companiesApi.list().then(({ data }) => setCompanies(data)).catch(() => { }); }, []);
   useEffect(() => { slikApi.list().then(({ data }) => { setSlikReports(data); setLoadedSlik(true); }).catch(() => setLoadedSlik(true)); }, []);
   useEffect(() => { cbiApi.list().then(({ data }) => { setCbiReports(data); setLoadedCbi(true); }).catch(() => setLoadedCbi(true)); }, []);
+  useEffect(() => { clickApi.list().then(({ data }) => { setClickReports(data); setLoadedClick(true); }).catch(() => setLoadedClick(true)); }, []);
 
   const handleUpload = async (file: File) => {
     setUploading(true); setUploadPct(0); setUploadFilename(file.name);
@@ -56,13 +60,20 @@ export default function IdebtParserPage() {
         setSelectedSlik(data);
         setParseType("slik");
         toast.success("SLIK berhasil diunggah & diparse");
-      } else {
+      } else if (uploadType === "cbi") {
         const { data } = await cbiApi.upload(file, uploadCompanyId || undefined, (e) => { if (e.total) setUploadPct(Math.round((e.loaded / e.total) * 90)); });
         setUploadPct(100);
         setCbiReports((prev) => [data, ...prev]);
         setSelectedCbi(data);
         setParseType("cbi");
         toast.success("CBI berhasil diunggah & diparse");
+      } else {
+        const { data } = await clickApi.upload(file, uploadCompanyId || undefined, (e) => { if (e.total) setUploadPct(Math.round((e.loaded / e.total) * 90)); });
+        setUploadPct(100);
+        setClickReports((prev) => [data, ...prev]);
+        setSelectedClick(data);
+        setParseType("clik");
+        toast.success("CLICK berhasil diunggah & diparse");
       }
       setModalOpen(false);
       setUploadCompanyId("");
@@ -76,14 +87,15 @@ export default function IdebtParserPage() {
     accept: { "application/pdf": [".pdf"] },
     maxSize: 50 * 1024 * 1024,
     multiple: false,
-    disabled: uploadType === "clik" || uploading,
+    disabled: uploading,
   });
 
   const handleDeleteSlik = async (id: string) => { if (!confirm("Hapus laporan SLIK?")) return; await slikApi.delete(id); setSlikReports((p) => p.filter((r) => r.id !== id)); if (selectedSlik?.id === id) setSelectedSlik(null); toast.success("Dihapus"); };
   const handleDeleteCbi = async (id: string) => { if (!confirm("Hapus laporan CBI?")) return; await cbiApi.delete(id); setCbiReports((p) => p.filter((r) => r.id !== id)); if (selectedCbi?.id === id) setSelectedCbi(null); toast.success("Dihapus"); };
+  const handleDeleteClick = async (id: string) => { if (!confirm("Hapus laporan CLICK?")) return; await clickApi.delete(id); setClickReports((p) => p.filter((r) => r.id !== id)); if (selectedClick?.id === id) setSelectedClick(null); toast.success("Dihapus"); };
 
-  const reports = parseType === "slik" ? slikReports : cbiReports;
-  const loaded = parseType === "slik" ? loadedSlik : loadedCbi;
+  const reports = parseType === "slik" ? slikReports : parseType === "cbi" ? cbiReports : clickReports;
+  const loaded = parseType === "slik" ? loadedSlik : parseType === "cbi" ? loadedCbi : loadedClick;
   const assignedCount = reports.filter((r) => r.company_id).length;
   const unassignedCount = reports.length - assignedCount;
 
@@ -99,10 +111,14 @@ export default function IdebtParserPage() {
         const { data } = await slikApi.assignCompany(reportId, nextCompanyId);
         setSlikReports((prev) => prev.map((r) => r.id === reportId ? data : r));
         if (selectedSlik?.id === reportId) setSelectedSlik(data);
-      } else {
+      } else if (parseType === "cbi") {
         const { data } = await cbiApi.assignCompany(reportId, nextCompanyId);
         setCbiReports((prev) => prev.map((r) => r.id === reportId ? data : r));
         if (selectedCbi?.id === reportId) setSelectedCbi(data);
+      } else {
+        const { data } = await clickApi.assignCompany(reportId, nextCompanyId);
+        setClickReports((prev) => prev.map((r) => r.id === reportId ? data : r));
+        if (selectedClick?.id === reportId) setSelectedClick(data);
       }
       toast.success(nextCompanyId ? "Laporan iDeb berhasil di-assign" : "Assignment laporan iDeb dihapus");
     } catch (e: unknown) {
@@ -152,9 +168,9 @@ export default function IdebtParserPage() {
                   <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 block mb-1.5">Jenis Laporan</label>
                   <div className="flex gap-2">
                     {([["slik", "SLIK"], ["cbi", "CBI"], ["clik", "CLIK"]] as [ParseType, string][]).map(([key, label]) => (
-                      <button key={key} onClick={() => setUploadType(key)} disabled={key === "clik" || uploading}
-                        className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-all ${uploadType === key ? "border-indigo-400 bg-indigo-50 text-indigo-700 shadow-sm" : key === "clik" ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`}>
-                        {label}{key === "clik" ? " (Soon)" : ""}
+                      <button key={key} onClick={() => setUploadType(key)} disabled={uploading}
+                        className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-all ${uploadType === key ? "border-indigo-400 bg-indigo-50 text-indigo-700 shadow-sm" : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"}`}>
+                        {label}
                       </button>
                     ))}
                   </div>
@@ -184,9 +200,9 @@ export default function IdebtParserPage() {
 
         {/* Tabs */}
         <div className="flex items-center gap-1 border-b border-slate-200">
-          {([["slik", "SLIK"], ["cbi", "CBI"]] as [ParseType, string][]).map(([key, label]) => (
+          {([["slik", "SLIK"], ["cbi", "CBI"], ["clik", "CLIK"]] as [ParseType, string][]).map(([key, label]) => (
             <button key={key} onClick={() => setParseType(key)} className={`relative px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-all ${parseType === key ? "border-indigo-500 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
-              {label} <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400">{(key === "slik" ? slikReports.length : cbiReports.length)}</span>
+              {label} <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400">{key === "slik" ? slikReports.length : key === "cbi" ? cbiReports.length : clickReports.length}</span>
             </button>
           ))}
         </div>
@@ -206,7 +222,7 @@ export default function IdebtParserPage() {
               <div className="py-8 text-center text-xs text-slate-400">Belum ada laporan</div>
             ) : (
               reports.map((r: any) => {
-                const isSelected = parseType === "slik" ? selectedSlik?.id === r.id : selectedCbi?.id === r.id;
+                const isSelected = parseType === "slik" ? selectedSlik?.id === r.id : parseType === "cbi" ? selectedCbi?.id === r.id : selectedClick?.id === r.id;
                 const name = r.parsed_data?.debitur?.nama ?? r.nama_debitur ?? "—";
                 const nomor = r.nomor_laporan || r.id?.slice(0, 8) || "—";
                 const assignedCompanyName = getCompanyName(r.company_id);
@@ -216,7 +232,7 @@ export default function IdebtParserPage() {
                     <div className="flex items-start gap-2">
                       <button
                         type="button"
-                        onClick={() => parseType === "slik" ? setSelectedSlik(r) : setSelectedCbi(r)}
+                        onClick={() => parseType === "slik" ? setSelectedSlik(r) : parseType === "cbi" ? setSelectedCbi(r) : setSelectedClick(r)}
                         className="flex min-w-0 flex-1 items-start gap-2 text-left"
                       >
                         <FileText className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
@@ -225,7 +241,7 @@ export default function IdebtParserPage() {
                           <p className="text-[11px] text-slate-400 truncate">{nomor}</p>
                         </div>
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); parseType === "slik" ? handleDeleteSlik(r.id) : handleDeleteCbi(r.id); }}
+                      <button onClick={(e) => { e.stopPropagation(); parseType === "slik" ? handleDeleteSlik(r.id) : parseType === "cbi" ? handleDeleteCbi(r.id) : handleDeleteClick(r.id); }}
                         className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                     <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
@@ -257,11 +273,13 @@ export default function IdebtParserPage() {
               <SlikAnalysis report={selectedSlik} />
             ) : parseType === "cbi" && selectedCbi ? (
               <CbiAnalysis report={selectedCbi} />
+            ) : parseType === "clik" && selectedClick ? (
+              <ClickAnalysis report={selectedClick} />
             ) : (
               <div className="rounded-xl border border-dashed border-slate-200 bg-white py-20 text-center">
                 <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-sm font-medium text-slate-500">Pilih laporan untuk melihat analisis</p>
-                <p className="text-xs text-slate-400 mt-1">Upload laporan SLIK atau CBI untuk melihat detail</p>
+                <p className="text-xs text-slate-400 mt-1">Upload laporan SLIK, CBI, atau CLICK untuk melihat detail</p>
               </div>
             )}
           </div>
@@ -374,6 +392,80 @@ function SlikAnalysis({ report }: { report: SlikReport }) {
           {fasilitas.map((f, i) => (<SlikFasilitasRow key={i} f={f} i={i} />))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── CLICK Analysis ──
+function ClickAnalysis({ report }: { report: ClickReport }) {
+  const aktif = report.parsed_data?.fasilitas_aktif ?? [];
+  const selesai = report.parsed_data?.fasilitas_selesai ?? [];
+  const s = report.parsed_data?.subject;
+
+  return (
+    <div className="space-y-5">
+      {report.parse_error && (<div className="flex gap-3 items-start rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700"><AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /><div><p className="font-semibold">Parse error</p><p className="text-xs mt-0.5 font-mono">{report.parse_error}</p></div></div>)}
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[["CB Score", String(report.cb_score ?? "—"), "blue"], ["Risk Grade", report.risk_grade ?? "—", "amber"], ["Jumlah Kontrak", String(report.jumlah_kontrak ?? "—"), "slate"], ["Jumlah Kreditur", String(report.jumlah_kreditur ?? "—"), "emerald"]].map(([l, v]) => (
+          <div key={String(l)} className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{String(l)}</p><p className="text-sm font-bold text-slate-800 mt-2">{String(v)}</p></div>
+        ))}
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {[["Total Credit Limit", formatIDR(report.parsed_data?.total_credit_limit)], ["Total Debit Balance", formatIDR(report.parsed_data?.total_debit_balance)], ["Total Overdue", formatIDR(report.parsed_data?.total_overdue)]].map(([l, v]) => (
+          <div key={String(l)} className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{String(l)}</p><p className="text-sm font-bold text-slate-800 mt-2">{String(v)}</p></div>
+        ))}
+      </div>
+
+      {/* Subject */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50"><h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500">Data Subjek</h3></div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-5">
+          {[["Nama", s?.nama ?? report.nama_debitur], ["No. Identitas", s?.no_identitas ?? report.no_identitas], ["Jenis Kelamin", s?.jenis_kelamin], ["Tempat Lahir", s?.tempat_lahir], ["Tanggal Lahir", s?.tanggal_lahir]].filter(([, v]) => v).map(([l, v]) => (
+            <div key={String(l)}><p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">{String(l)}</p><p className="text-sm text-slate-800 mt-0.5">{String(v)}</p></div>
+          ))}
+        </div>
+      </div>
+
+      {/* Fasilitas Aktif */}
+      {aktif.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">Fasilitas Aktif ({aktif.length})</h3>
+          <div className="space-y-2">
+            {aktif.map((f, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-slate-700 truncate">{f.kreditur || "—"}</p>
+                  <p className="text-[10px] text-slate-400">{f.jenis_kredit || "—"} · Plafon {formatIDR(f.plafon)} · Bunga {f.bunga || "—"}</p>
+                  <p className="text-[10px] text-slate-400">Mulai {f.tanggal_mulai || "—"} · Jatuh Tempo {f.tanggal_jatuh_tempo || "—"}</p>
+                </div>
+                <div className="text-right shrink-0 ml-3">
+                  <p className="text-xs font-semibold text-slate-700">{formatIDR(f.baki_debet)}</p>
+                  <p className="text-[10px] text-slate-400">{f.kualitas || "—"}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Fasilitas Selesai */}
+      {selesai.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">Fasilitas Selesai ({selesai.length})</h3>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {selesai.slice(0, 6).map((f, i) => (
+              <div key={i} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
+                <p className="font-semibold text-slate-700 truncate">{f.kreditur || "—"}</p>
+                <p className="text-[10px] text-slate-400">{f.jenis_kredit || "—"} · {formatIDR(f.plafon)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

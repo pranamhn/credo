@@ -8,6 +8,8 @@ from app.api.v1.companies import router as companies_router
 from app.api.v1.statements import router as statements_router
 from app.api.v1.slik import router as slik_router
 from app.api.v1.cbi import router as cbi_router
+from app.api.v1.click import router as click_router
+import app.models.click_report  # noqa: F401 — register model so create_all sees it
 
 
 @asynccontextmanager
@@ -41,6 +43,7 @@ app.include_router(statements_router, prefix="/api/v1")
 app.include_router(companies_router, prefix="/api/v1")
 app.include_router(slik_router, prefix="/api/v1")
 app.include_router(cbi_router, prefix="/api/v1")
+app.include_router(click_router, prefix="/api/v1")
 
 
 @app.get("/health")

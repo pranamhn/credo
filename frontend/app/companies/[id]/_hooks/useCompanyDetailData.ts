@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { companiesApi, statementsApi, slikApi, cbiApi } from "@/lib/api";
-import type { CompanySummary, Statement, SlikReport, CbiReport } from "@/lib/api";
+import { companiesApi, statementsApi, slikApi, cbiApi, clickApi } from "@/lib/api";
+import type { CompanySummary, Statement, SlikReport, CbiReport, ClickReport } from "@/lib/api";
 import { toast } from "sonner";
 
 export function useCompanyDetailData(id: string) {
@@ -10,6 +10,7 @@ export function useCompanyDetailData(id: string) {
   const [statements, setStatements] = useState<Statement[]>([]);
   const [slikReports, setSlikReports] = useState<SlikReport[]>([]);
   const [cbiReports, setCbiReports] = useState<CbiReport[]>([]);
+  const [clickReports, setClickReports] = useState<ClickReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -19,16 +20,23 @@ export function useCompanyDetailData(id: string) {
   const fetchData = useCallback(async () => {
     try {
       setError(false);
-      const [summaryRes, statementsRes, slikRes, cbiRes] = await Promise.all([
+
+      const [summaryRes, statementsRes] = await Promise.all([
         companiesApi.get(id),
         companiesApi.statements(id),
-        slikApi.list(id),
-        cbiApi.list(id),
       ]);
       setSummary(summaryRes.data);
       setStatements(statementsRes.data);
-      setSlikReports(slikRes.data);
-      setCbiReports(cbiRes.data);
+
+      // Non-critical data: catch individually so page still loads
+      const [slikRes, cbiRes, clickRes] = await Promise.allSettled([
+        slikApi.list(id),
+        cbiApi.list(id),
+        clickApi.list(id),
+      ]);
+      if (slikRes.status === "fulfilled") setSlikReports(slikRes.value.data);
+      if (cbiRes.status === "fulfilled") setCbiReports(cbiRes.value.data);
+      if (clickRes.status === "fulfilled") setClickReports(clickRes.value.data);
     } catch {
       setError(true);
       toast.error("Gagal memuat detail perusahaan");
@@ -65,7 +73,7 @@ export function useCompanyDetailData(id: string) {
   };
 
   return {
-    summary, statements, slikReports, cbiReports,
+    summary, statements, slikReports, cbiReports, clickReports,
     loading, error,
     fetchData,
     deletingId, reparsingId, confirmDeleteId, setConfirmDeleteId,

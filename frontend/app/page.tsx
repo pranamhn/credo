@@ -9,7 +9,7 @@ import { statementsApi, companiesApi, Statement, CompanySummary } from "@/lib/ap
 import { formatDate, formatIDR } from "@/lib/utils";
 import {
   AlertTriangle, ArrowRight, Building2, CloudUpload,
-  FileText, ShieldCheck, Timer, TrendingUp, X, AlertCircle,
+  FileText, ShieldCheck, Timer, X, AlertCircle,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -91,9 +91,9 @@ export default function HomePage() {
   }, [companies, tierCounts]);
 
   const tierData = [
-    { name: "High",   value: tierCounts.High,   fill: TIER_COLORS.High },
+    { name: "High", value: tierCounts.High, fill: TIER_COLORS.High },
     { name: "Medium", value: tierCounts.Medium, fill: TIER_COLORS.Medium },
-    { name: "Low",    value: tierCounts.Low,    fill: TIER_COLORS.Low },
+    { name: "Low", value: tierCounts.Low, fill: TIER_COLORS.Low },
   ].filter((d) => d.value > 0);
 
   const maxFlow = Math.max(totalCredit, totalDebit) || 1;
@@ -112,7 +112,7 @@ export default function HomePage() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-3">Briefing Hari Ini</p>
           {loading ? (
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-              {[0,1,2,3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+              {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
             </div>
           ) : (
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
@@ -213,8 +213,8 @@ export default function HomePage() {
             ) : (
               <div className="space-y-3">
                 {[
-                  { label: "Total Kredit", value: totalCredit,  color: "bg-emerald-500", text: "text-emerald-700" },
-                  { label: "Total Debit",  value: totalDebit,   color: "bg-red-400",     text: "text-red-600"   },
+                  { label: "Total Kredit", value: totalCredit, color: "bg-emerald-500", text: "text-emerald-700" },
+                  { label: "Total Debit", value: totalDebit, color: "bg-red-400", text: "text-red-600" },
                 ].map(({ label, value, color, text }) => (
                   <div key={label}>
                     <div className="flex items-center justify-between text-xs mb-1.5">
@@ -239,14 +239,6 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-1">
-                  <GlowButton variant="primary" icon={<CloudUpload className="h-3.5 w-3.5" />} href="/upload" className="flex-1 justify-center text-xs h-8">
-                    Upload
-                  </GlowButton>
-                  <GlowButton variant="secondary" icon={<TrendingUp className="h-3.5 w-3.5" />} href="/analytics" className="flex-1 justify-center text-xs h-8">
-                    Analytics
-                  </GlowButton>
-                </div>
               </div>
             )}
           </DataCard>
@@ -266,7 +258,7 @@ export default function HomePage() {
           <DataCard padding="flush">
             {loading ? (
               <div className="divide-y divide-slate-100">
-                {[0,1,2].map((i) => <Skeleton key={i} className="h-14 rounded-none" />)}
+                {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-none" />)}
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
@@ -374,7 +366,7 @@ export default function HomePage() {
           <DataCard padding="flush">
             {loading ? (
               <div className="divide-y divide-slate-100">
-                {[0,1,2,3].map((i) => <Skeleton key={i} className="h-14 rounded-none" />)}
+                {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-14 rounded-none" />)}
               </div>
             ) : recent.length === 0 ? (
               <div className="px-6 py-12 text-center">

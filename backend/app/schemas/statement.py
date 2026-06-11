@@ -69,6 +69,10 @@ class TransactionRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AssignBody(BaseModel):
+    company_id: Optional[UUID] = None
+
+
 class TransactionPatch(BaseModel):
     description_raw: Optional[str] = None
     description_normalized: Optional[str] = None

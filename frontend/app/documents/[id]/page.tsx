@@ -13,7 +13,8 @@ import { formatIDR, formatDate, formatPct } from "@/lib/utils";
 import {
   ArrowDownCircle, ArrowUpCircle, Scale, TrendingUp,
   Download, RefreshCw, CheckCircle2, AlertTriangle, Filter, FileDown, Pencil, X, Save, Check, MoreHorizontal,
-  Building2, MapPin, Phone, Mail, ScrollText, Users,
+  Building2, MapPin, Phone, Mail, ScrollText, Users, FileCheck, Briefcase,
+  Banknote, BarChart2, Wallet,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -425,6 +426,517 @@ export default function StatementDetailPage() {
               </table>
             </div>
           )}
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (stmt.document_type === "akta") {
+    const akta = (stmt.parse_meta as Record<string, unknown>)?.akta as Record<string, unknown> | undefined;
+    const pengurus = (akta?.pengurus as Record<string, unknown>[]) ?? [];
+    const pemegang = (akta?.pemegang_saham as Record<string, unknown>[]) ?? [];
+    const kegiatan = (akta?.kegiatan_usaha as Record<string, unknown>[]) ?? [];
+    const penghadap = (akta?.penghadap as Record<string, unknown>[]) ?? [];
+    const formatRp = (v: unknown) => v == null ? "—" : `Rp ${Number(v).toLocaleString("id-ID")}`;
+    return (
+      <AppShell>
+        <div className="space-y-5">
+          {/* Header */}
+          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-card p-6 shadow-sm">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 ring-1 ring-amber-200 text-amber-600">
+                <FileCheck className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Akta Pendirian PT</p>
+                <h1 className="text-xl font-bold text-slate-900">{String(akta?.nama_perusahaan ?? stmt.account_holder ?? stmt.original_filename)}</h1>
+                <p className="mt-1 text-sm text-slate-500">
+                  {akta?.nomor_akta ? `No. ${akta.nomor_akta}` : ""}
+                  {akta?.tanggal_akta ? ` — ${akta.tanggal_akta}` : ""}
+                </p>
+              </div>
+              <StatusBadge status={stmt.status} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Detail Akta */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Detail Akta</p>
+              {[
+                ["Nama Perusahaan", akta?.nama_perusahaan],
+                ["Domisili", akta?.domisili],
+                ["Nomor Akta", akta?.nomor_akta],
+                ["Tanggal Akta", akta?.tanggal_akta],
+                ["Hari / Pukul", akta?.hari ? `${akta.hari}${akta.waktu ? `, ${akta.waktu}` : ""}` : akta?.waktu],
+                ["Notaris", akta?.notaris],
+                ["Kota Notaris", akta?.kota_notaris],
+                ["Jangka Waktu", akta?.jangka_waktu],
+              ].filter(([, v]) => v).map(([label, value]) => (
+                <div key={String(label)} className="flex justify-between text-xs gap-4">
+                  <span className="text-slate-400 shrink-0">{String(label)}</span>
+                  <span className="font-medium text-slate-700 text-right">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Modal */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Modal Perseroan</p>
+              {[
+                ["Modal Dasar", formatRp(akta?.modal_dasar)],
+                ["Modal Ditempatkan & Disetor", formatRp(akta?.modal_ditempatkan_disetor)],
+                ["Jumlah Saham Modal Dasar", akta?.jumlah_saham_modal_dasar != null ? Number(akta.jumlah_saham_modal_dasar).toLocaleString("id-ID") + " lembar" : null],
+                ["Jumlah Saham Ditempatkan", akta?.jumlah_saham_ditempatkan != null ? Number(akta.jumlah_saham_ditempatkan).toLocaleString("id-ID") + " lembar" : null],
+                ["Nilai Nominal/Saham", formatRp(akta?.nilai_nominal_per_saham)],
+              ].filter(([, v]) => v && v !== "—").map(([label, value]) => (
+                <div key={String(label)} className="flex justify-between text-xs gap-4">
+                  <span className="text-slate-400 shrink-0">{String(label)}</span>
+                  <span className="font-medium text-slate-700 text-right">{String(value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pengurus & Pemegang Saham */}
+          {(pengurus.length > 0 || pemegang.length > 0) && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <Users className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Pengurus & Pemegang Saham</p>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="border-b border-slate-100">
+                  <tr>
+                    {["Nama", "Jabatan", "Jumlah Saham", "Nilai Nominal"].map((h) => (
+                      <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pengurus.map((p, i) => (
+                    <tr key={`dir-${i}`} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-semibold text-slate-800">{String(p.nama ?? "")}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${p.jabatan === "Direktur" ? "bg-amber-50 text-amber-700 ring-amber-200" : "bg-slate-100 text-slate-600 ring-slate-200"}`}>
+                          {String(p.jabatan ?? "")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-400">—</td>
+                      <td className="px-4 py-2.5 text-slate-400">—</td>
+                    </tr>
+                  ))}
+                  {pemegang.map((p, i) => (
+                    <tr key={`sh-${i}`} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-semibold text-slate-800">{String(p.nama ?? "")}</td>
+                      <td className="px-4 py-2.5">
+                        <span className="inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-200">Pemegang Saham</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-600">{p.jumlah_saham != null ? Number(p.jumlah_saham).toLocaleString("id-ID") : "—"}</td>
+                      <td className="px-4 py-2.5 text-slate-600">{formatRp(p.nilai_nominal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Kegiatan Usaha */}
+          {kegiatan.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Kegiatan Usaha — {kegiatan.length} Bidang</p>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="border-b border-slate-100">
+                  <tr>
+                    {["Kode KBLI", "Uraian"].map((h) => (
+                      <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {kegiatan.map((k, i) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-mono font-semibold text-amber-700">{String(k.kode_kbli ?? "")}</td>
+                      <td className="px-4 py-2.5 text-slate-700">{String(k.uraian ?? "")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Penghadap */}
+          {penghadap.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Penghadap / Para Pihak</p>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {penghadap.map((p, i) => (
+                  <div key={i} className="px-4 py-3 text-xs space-y-1">
+                    <p className="font-semibold text-slate-800">{String(p.nama ?? "")}</p>
+                    <p className="text-slate-500">{[p.tempat_lahir, p.tanggal_lahir].filter(Boolean).join(", ")}</p>
+                    <p className="text-slate-500">{String(p.alamat ?? "")}</p>
+                    {!!p.nik && <p className="font-mono text-slate-400">NIK: {String(p.nik)}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </AppShell>
+    );
+  }
+
+  // ── Financial statement views (PnL / BS / CF) ────────────────────────────
+  if (stmt.document_type === "profit_loss") {
+    const pnl = (stmt.parse_meta as Record<string, unknown>)?.pnl as Record<string, unknown> | undefined;
+    const periods = (pnl?.periods as string[]) ?? [];
+    const lineItems = (pnl?.line_items as Record<string, unknown>[]) ?? [];
+    const summaries = (pnl?.summaries as Record<string, Record<string, number>>) ?? {};
+    const fmt = (v: unknown) => v == null ? "—" : formatIDR(Number(v));
+    const sections = Array.from(new Set(lineItems.map((li) => String(li.section ?? ""))));
+    return (
+      <AppShell>
+        <div className="space-y-5">
+          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-card p-6 shadow-sm">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 ring-1 ring-emerald-200 text-emerald-600">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Laporan Laba Rugi</p>
+                <h1 className="text-xl font-bold text-slate-900">{String(pnl?.entity_name ?? stmt.account_holder ?? stmt.original_filename)}</h1>
+                <p className="mt-1 text-sm text-slate-500">{formatDate(stmt.period_start)} – {formatDate(stmt.period_end)} · {String(pnl?.currency ?? "IDR")}</p>
+              </div>
+              <StatusBadge status={stmt.status} />
+            </div>
+          </div>
+
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {[
+              { label: "Pendapatan", key: "revenue", color: "text-emerald-700 bg-emerald-50 ring-emerald-200" },
+              { label: "Laba Kotor", key: "gross_profit", color: "text-sky-700 bg-sky-50 ring-sky-200" },
+              { label: "Laba Operasi", key: "operating_profit", color: "text-violet-700 bg-violet-50 ring-violet-200" },
+              { label: "Laba Bersih", key: "net_income", color: "text-amber-700 bg-amber-50 ring-amber-200" },
+            ].map(({ label, key, color }) => (
+              <div key={key} className={`rounded-xl border p-4 ring-1 ${color}`}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70 mb-1">{label}</p>
+                <p className="text-base font-bold">{fmt(summaries[key]?.total)}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Period summary table */}
+          {periods.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <BarChart2 className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Ringkasan per Periode</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400 sticky left-0 bg-white">Metrik</th>
+                      {periods.map((p) => <th key={p} className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">{p}</th>)}
+                      <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label: "Pendapatan", key: "revenue" },
+                      { label: "HPP", key: "cost_of_goods_sold" },
+                      { label: "Laba Kotor", key: "gross_profit" },
+                      { label: "Biaya Operasi", key: "operating_expense" },
+                      { label: "Laba Bersih", key: "net_income" },
+                    ].filter(({ key }) => summaries[key]).map(({ label, key }) => (
+                      <tr key={key} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-2.5 font-medium text-slate-700 sticky left-0 bg-white">{label}</td>
+                        {periods.map((p) => {
+                          const v = summaries[key]?.[p];
+                          return <td key={p} className={`px-4 py-2.5 text-right font-mono ${v != null && v < 0 ? "text-red-600" : "text-slate-700"}`}>{fmt(v)}</td>;
+                        })}
+                        <td className={`px-4 py-2.5 text-right font-mono font-semibold ${(summaries[key]?.total ?? 0) < 0 ? "text-red-600" : "text-slate-800"}`}>{fmt(summaries[key]?.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Line items by section */}
+          {sections.map((section) => {
+            const items = lineItems.filter((li) => li.section === section);
+            if (!items.length) return null;
+            return (
+              <div key={section} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{section}</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="border-b border-slate-100">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400 sticky left-0 bg-white">Keterangan</th>
+                        {periods.map((p) => <th key={p} className="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">{p}</th>)}
+                        <th className="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((li, i) => {
+                        const vals = (li.values as Record<string, number>) ?? {};
+                        const total = li.total as number | null;
+                        return (
+                          <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${li.is_total ? "font-semibold bg-slate-50/80" : ""}`}>
+                            <td className={`px-4 py-2 sticky left-0 ${li.is_total ? "bg-slate-50 text-slate-800" : "bg-white text-slate-600"} ${li.is_total ? "pl-4" : "pl-7"}`}>{String(li.description ?? "")}</td>
+                            {periods.map((p) => {
+                              const v = vals[p];
+                              return <td key={p} className={`px-4 py-2 text-right font-mono ${v != null && v < 0 ? "text-red-600" : "text-slate-700"}`}>{v != null ? fmt(v) : "—"}</td>;
+                            })}
+                            <td className={`px-4 py-2 text-right font-mono ${total != null && total < 0 ? "text-red-600" : "text-slate-700"}`}>{fmt(total)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (stmt.document_type === "balance_sheet") {
+    const bs = (stmt.parse_meta as Record<string, unknown>)?.balance_sheet as Record<string, unknown> | undefined;
+    const periods = (bs?.periods as string[]) ?? [];
+    const lineItems = (bs?.line_items as Record<string, unknown>[]) ?? [];
+    const summaries = (bs?.summaries as Record<string, Record<string, number>>) ?? {};
+    const balanceChecks = (bs?.balance_checks as Record<string, unknown>[]) ?? [];
+    const fmt = (v: unknown) => v == null ? "—" : formatIDR(Number(v));
+    const sections = Array.from(new Set(lineItems.map((li) => String(li.section ?? ""))));
+    const isBalanced = balanceChecks.length > 0 && balanceChecks.every((c) => c.balanced);
+    return (
+      <AppShell>
+        <div className="space-y-5">
+          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-card p-6 shadow-sm">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400 to-transparent" />
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 ring-1 ring-sky-200 text-sky-600">
+                <Scale className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Neraca Keuangan</p>
+                <h1 className="text-xl font-bold text-slate-900">{String(bs?.company_name ?? stmt.account_holder ?? stmt.original_filename)}</h1>
+                <p className="mt-1 text-sm text-slate-500">{formatDate(stmt.period_start)} – {formatDate(stmt.period_end)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${isBalanced ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-amber-200"}`}>
+                  {isBalanced ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                  {isBalanced ? "Balanced" : "Unbalanced"}
+                </span>
+                <StatusBadge status={stmt.status} />
+              </div>
+            </div>
+          </div>
+
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Total Aset", key: "total_assets", color: "text-sky-700 bg-sky-50 ring-sky-200" },
+              { label: "Total Liabilitas", key: "total_liabilities", color: "text-red-700 bg-red-50 ring-red-200" },
+              { label: "Total Ekuitas", key: "total_equity", color: "text-violet-700 bg-violet-50 ring-violet-200" },
+            ].filter(({ key }) => summaries[key]).map(({ label, key, color }) => {
+              const vals = summaries[key];
+              const latest = periods.length ? vals?.[periods[periods.length - 1]] : null;
+              return (
+                <div key={key} className={`rounded-xl border p-4 ring-1 ${color}`}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70 mb-1">{label}</p>
+                  <p className="text-base font-bold">{fmt(latest)}</p>
+                  {periods.length > 1 && <p className="text-[10px] mt-0.5 opacity-60">{periods[periods.length - 1]}</p>}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Balance checks */}
+          {balanceChecks.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <Scale className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Pengecekan Keseimbangan</p>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="border-b border-slate-100">
+                  <tr>{["Periode", "Total Aset", "Total L+E", "Selisih", "Status"].map((h) => (
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">{h}</th>
+                  ))}</tr>
+                </thead>
+                <tbody>
+                  {balanceChecks.map((c, i) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-mono text-slate-700">{String(c.period ?? "")}</td>
+                      <td className="px-4 py-2.5 text-slate-700">{fmt(c.total_assets)}</td>
+                      <td className="px-4 py-2.5 text-slate-700">{fmt(c.total_liabilities_and_equities)}</td>
+                      <td className={`px-4 py-2.5 font-mono ${Number(c.delta ?? 0) !== 0 ? "text-red-600" : "text-emerald-600"}`}>{fmt(c.delta)}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${c.balanced ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-red-50 text-red-700 ring-red-200"}`}>
+                          {c.balanced ? "✓ Balanced" : "✗ Unbalanced"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Line items by section */}
+          {sections.map((section) => {
+            const items = lineItems.filter((li) => li.section === section);
+            if (!items.length) return null;
+            return (
+              <div key={section} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{section}</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="border-b border-slate-100">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400 sticky left-0 bg-white">Keterangan</th>
+                        {periods.map((p) => <th key={p} className="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">{p}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((li, i) => {
+                        const vals = (li.values as Record<string, number>) ?? {};
+                        return (
+                          <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${li.is_total ? "font-semibold bg-slate-50/80" : ""}`}>
+                            <td className={`px-4 py-2 sticky left-0 ${li.is_total ? "bg-slate-50 text-slate-800 pl-4" : "bg-white text-slate-600 pl-7"}`}>{String(li.description ?? "")}</td>
+                            {periods.map((p) => {
+                              const v = vals[p];
+                              return <td key={p} className={`px-4 py-2 text-right font-mono ${v != null && v < 0 ? "text-red-600" : "text-slate-700"}`}>{v != null ? fmt(v) : "—"}</td>;
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (stmt.document_type === "cash_flow") {
+    const cf = (stmt.parse_meta as Record<string, unknown>)?.cash_flow as Record<string, unknown> | undefined;
+    const lineItems = (cf?.line_items as Record<string, unknown>[]) ?? [];
+    const summaries = (cf?.summaries as Record<string, number>) ?? {};
+    const cashCheck = (cf?.cash_check as Record<string, unknown>) ?? {};
+    const fmt = (v: unknown) => v == null ? "—" : formatIDR(Number(v));
+    const sections = Array.from(new Set(lineItems.map((li) => String(li.section ?? ""))));
+    return (
+      <AppShell>
+        <div className="space-y-5">
+          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-card p-6 shadow-sm">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 ring-1 ring-amber-200 text-amber-600">
+                <Banknote className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Laporan Arus Kas</p>
+                <h1 className="text-xl font-bold text-slate-900">{String(cf?.company_name ?? stmt.account_holder ?? stmt.original_filename)}</h1>
+                <p className="mt-1 text-sm text-slate-500">{formatDate(stmt.period_start)} – {formatDate(stmt.period_end)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {cashCheck.balanced != null && (
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${cashCheck.balanced ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-amber-200"}`}>
+                    {cashCheck.balanced ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                    {cashCheck.balanced ? "Balanced" : "Unbalanced"}
+                  </span>
+                )}
+                <StatusBadge status={stmt.status} />
+              </div>
+            </div>
+          </div>
+
+          {/* Cash flow check */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Kas Awal", val: cashCheck.opening_cash, color: "text-slate-700 bg-slate-50 ring-slate-200" },
+              { label: "Net Perubahan Kas", val: cashCheck.net_cash_change, color: "text-amber-700 bg-amber-50 ring-amber-200" },
+              { label: "Kas Akhir", val: cashCheck.ending_cash, color: "text-emerald-700 bg-emerald-50 ring-emerald-200" },
+            ].map(({ label, val, color }) => (
+              <div key={label} className={`rounded-xl border p-4 ring-1 ${color}`}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70 mb-1">{label}</p>
+                <p className="text-base font-bold">{fmt(val)}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Activity summaries */}
+          {Object.keys(summaries).length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <Wallet className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Ringkasan Aktivitas</p>
+              </div>
+              <table className="w-full text-xs">
+                <tbody>
+                  {Object.entries(summaries).map(([key, val]) => (
+                    <tr key={key} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-medium text-slate-700 capitalize">{key.replace(/_/g, " ")}</td>
+                      <td className={`px-4 py-2.5 text-right font-mono font-semibold ${Number(val) < 0 ? "text-red-600" : "text-emerald-700"}`}>{fmt(val)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Line items by section */}
+          {sections.map((section) => {
+            const items = lineItems.filter((li) => li.section === section);
+            if (!items.length) return null;
+            return (
+              <div key={section} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{section}</p>
+                </div>
+                <table className="w-full text-xs">
+                  <thead className="border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-400">Keterangan</th>
+                      <th className="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">Jumlah</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((li, i) => (
+                      <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${li.is_total ? "font-semibold bg-slate-50/80" : ""}`}>
+                        <td className={`px-4 py-2 ${li.is_total ? "text-slate-800 pl-4" : "text-slate-600 pl-7"}`}>{String(li.description ?? "")}</td>
+                        <td className={`px-4 py-2 text-right font-mono ${Number(li.amount ?? 0) < 0 ? "text-red-600" : "text-slate-700"}`}>{fmt(li.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
         </div>
       </AppShell>
     );
@@ -1109,27 +1621,6 @@ export default function StatementDetailPage() {
         </Tabs>
       </div>
 
-      {/* R4 — Sticky action bar */}
-      {stmt && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-sm px-6 py-3 flex items-center justify-center gap-3 shadow-lg">
-          <button onClick={handleRefresh} disabled={refreshing} className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
-          </button>
-          {stmt.status === "failed" && (
-            <button onClick={handleReparse} disabled={reparsing} className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-600">
-              <RefreshCw className={`h-3.5 w-3.5 ${reparsing ? "animate-spin" : ""}`} /> Re-parse
-            </button>
-          )}
-          {!stmt.is_reconciled && (stmt.status === "done" || stmt.status === "needs_review") && (
-            <button onClick={handleReconcile} disabled={reconciling} className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-600">
-              <CheckCircle2 className="h-3.5 w-3.5" /> {reconciling ? "..." : "Rekonsiliasi"}
-            </button>
-          )}
-          <button onClick={handleExportExcel} className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-600">
-            <Download className="h-3.5 w-3.5" /> Export Excel
-          </button>
-        </div>
-      )}
     </AppShell>
   );
 }

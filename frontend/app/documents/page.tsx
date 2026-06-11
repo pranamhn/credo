@@ -10,7 +10,7 @@ import { formatIDR, formatDate } from "@/lib/utils";
 import {
   AlertTriangle, Building2, CheckCircle2, Download,
   ExternalLink, FileCheck, FileStack, FileText,
-  Plus, RefreshCw, ScrollText,
+  Plus, RefreshCw, ScrollText, TrendingUp, Scale, Banknote,
   Search, ShieldCheck, Trash2, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,14 +23,20 @@ function pct(value: number | null | undefined) {
   return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 }
 
-type DocTab = "bank_statement" | "nib" | "ahu" | "akta" | "other";
+type DocTab = "bank_statement" | "profit_loss" | "balance_sheet" | "cash_flow" | "nib" | "ahu" | "akta" | "other";
 const DOC_TABS: { key: DocTab; label: string; icon: React.ReactNode }[] = [
   { key: "bank_statement", label: "Bank Statement",  icon: <FileText className="h-3.5 w-3.5" /> },
+  { key: "profit_loss",    label: "Laba Rugi",       icon: <TrendingUp className="h-3.5 w-3.5" /> },
+  { key: "balance_sheet",  label: "Neraca",          icon: <Scale className="h-3.5 w-3.5" /> },
+  { key: "cash_flow",      label: "Arus Kas",        icon: <Banknote className="h-3.5 w-3.5" /> },
   { key: "nib",            label: "NIB",              icon: <ScrollText className="h-3.5 w-3.5" /> },
   { key: "ahu",            label: "AHU",              icon: <Building2 className="h-3.5 w-3.5" /> },
   { key: "akta",           label: "Akta",             icon: <FileCheck className="h-3.5 w-3.5" /> },
   { key: "other",          label: "Lainnya",          icon: <FileStack className="h-3.5 w-3.5" /> },
 ];
+
+const FINANCIAL_TABS = new Set<DocTab>(["profit_loss", "balance_sheet", "cash_flow"]);
+const NAMED_TABS = new Set<string>(["bank_statement", "profit_loss", "balance_sheet", "cash_flow", "nib", "ahu", "akta"]);
 
 // Resolve NIB / AHU display fields from parse_meta
 function nibField(s: Statement, key: string): string {
@@ -91,7 +97,7 @@ export default function StatementsPage() {
     const counts: Partial<Record<DocTab, number>> = {};
     for (const { key } of DOC_TABS) {
       counts[key] = statements.filter((s) => {
-        if (key === "other") return !["bank_statement", "nib", "ahu", "akta"].includes(s.document_type ?? "");
+        if (key === "other") return !NAMED_TABS.has(s.document_type ?? "");
         return s.document_type === key;
       }).length;
     }
@@ -100,7 +106,7 @@ export default function StatementsPage() {
 
   const filtered = useMemo(() => {
     let list = statements.filter((s) => {
-      if (activeTab === "other") return !["bank_statement", "nib", "ahu", "akta"].includes(s.document_type ?? "");
+      if (activeTab === "other") return !NAMED_TABS.has(s.document_type ?? "");
       return s.document_type === activeTab;
     });
     const q = search.trim().toLowerCase();
@@ -290,6 +296,7 @@ export default function StatementsPage() {
                   reparseProgress={reparseProgress} handleReparse={handleReparse}
                   companyMap={companyMap} companies={companies} onAssign={handleAssign} />
               )}
+              {FINANCIAL_TABS.has(activeTab) && <FinancialDocTable rows={paginated} selected={selected} allPageSelected={allPageSelected} toggleAll={toggleAll} toggleRow={toggleRow} companyMap={companyMap} companies={companies} onAssign={handleAssign} />}
               {activeTab === "nib" && <NibTable rows={paginated} selected={selected} allPageSelected={allPageSelected} toggleAll={toggleAll} toggleRow={toggleRow} companyMap={companyMap} companies={companies} onAssign={handleAssign} />}
               {activeTab === "ahu" && <AhuTable rows={paginated} selected={selected} allPageSelected={allPageSelected} toggleAll={toggleAll} toggleRow={toggleRow} companyMap={companyMap} companies={companies} onAssign={handleAssign} />}
               {(activeTab === "akta" || activeTab === "other") && <SimpleTable rows={paginated} selected={selected} allPageSelected={allPageSelected} toggleAll={toggleAll} toggleRow={toggleRow} companyMap={companyMap} companies={companies} onAssign={handleAssign} />}
@@ -455,6 +462,64 @@ function BankStatementTable({ rows, selected, allPageSelected, toggleAll, toggle
                   <RefreshCw className="h-3 w-3" /> Re-parse
                 </button>
               )} />
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    </div>
+  );
+}
+
+const FINANCIAL_TYPE_LABEL: Record<string, string> = {
+  profit_loss: "Laba Rugi",
+  balance_sheet: "Neraca",
+  cash_flow: "Arus Kas",
+};
+
+function financialField(s: Statement, key: string): string {
+  const meta = s.parse_meta as Record<string, unknown> | null;
+  return String(meta?.[key] ?? "—");
+}
+
+function FinancialDocTable({ rows, selected, allPageSelected, toggleAll, toggleRow, companyMap, companies, onAssign }: TableProps) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="overflow-x-auto">
+    <table className="w-full text-xs">
+      <thead className="border-b border-slate-200 bg-slate-50">
+        <tr>
+          <CheckTh allPageSelected={allPageSelected} toggleAll={toggleAll} />
+          {["Nama / File", "Tipe", "Periode", "Entitas", "Perusahaan", "Status", "Action"].map((h) => (
+            <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-slate-500">{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((s) => (
+          <tr key={s.id} className={cn("border-b border-slate-100 hover:bg-slate-50 transition-colors", selected.has(s.id) && "bg-violet-50/40")}>
+            <td className="pl-4 py-3.5"><input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleRow(s.id)} className="rounded border-slate-300 accent-violet-500" /></td>
+            <td className="px-4 py-3.5">
+              <p className="font-semibold text-slate-900 truncate max-w-[160px]">{s.account_holder || financialField(s, "entity_name") || "—"}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[180px]">{s.original_filename}</p>
+            </td>
+            <td className="px-4 py-3.5">
+              <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+                s.document_type === "profit_loss"   ? "bg-emerald-50 text-emerald-700 ring-emerald-200" :
+                s.document_type === "balance_sheet" ? "bg-sky-50 text-sky-700 ring-sky-200" :
+                                                      "bg-amber-50 text-amber-700 ring-amber-200"
+              )}>
+                {FINANCIAL_TYPE_LABEL[s.document_type ?? ""] ?? s.document_type}
+              </span>
+            </td>
+            <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">
+              {s.period_start ? `${formatDate(s.period_start)}${s.period_end ? ` – ${formatDate(s.period_end)}` : ""}` : (financialField(s, "period") || "—")}
+            </td>
+            <td className="px-4 py-3.5 text-slate-600 truncate max-w-[140px]">
+              {financialField(s, "entity_name")}
+            </td>
+            <CompanyCell statementId={s.id} companyId={s.company_id} companyMap={companyMap} companies={companies} onAssign={onAssign} />
+            <td className="px-4 py-3.5"><StatusBadge status={s.status} /></td>
+            <ActionMenu id={s.id} />
           </tr>
         ))}
       </tbody>
